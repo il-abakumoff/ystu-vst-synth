@@ -5,6 +5,10 @@
               pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="Fic8Cf" name="YSTU-Synth">
     <GROUP id="{F3FF0CAB-C257-0EC2-54F3-C1EFAA0CA188}" name="Source">
+      <FILE id="QW0e80" name="CustomEnvelope.cpp" compile="1" resource="0"
+            file="Source/CustomEnvelope.cpp"/>
+      <FILE id="AVgWH8" name="CustomEnvelope.h" compile="0" resource="0"
+            file="Source/CustomEnvelope.h"/>
       <FILE id="UBjt21" name="WavetableVoice.h" compile="0" resource="0"
             file="Source/WavetableVoice.h"/>
       <FILE id="BKVYop" name="WavetableVoice.cpp" compile="1" resource="0"
@@ -28,6 +32,7 @@
     <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
@@ -55,6 +60,7 @@
         <MODULEPATH id="juce_graphics" path="C:/JUCE/modules"/>
         <MODULEPATH id="juce_gui_basics" path="C:/JUCE/modules"/>
         <MODULEPATH id="juce_gui_extra" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_dsp" path="C:/JUCE/modules"/>
       </MODULEPATHS>
     </VS2022>
   </EXPORTFORMATS>

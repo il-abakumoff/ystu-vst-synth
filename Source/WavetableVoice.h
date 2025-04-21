@@ -1,7 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
-#include <juce_audio_basics/juce_audio_basics.h>
-#include <juce_audio_devices/juce_audio_devices.h>
+#include "CustomEnvelope.h"
 	
 class WavetableVoice : public juce::SynthesiserVoice
 {
@@ -28,7 +27,10 @@ public:
         pitchSemitones2 = pitch2;
     }
 
-    void setSampleRate(double sr) { adsr.setSampleRate(sr); }
+    void setSampleRate(double sampleRate) { envelope.setSampleRate(sampleRate); }
+
+    void setAdsrParameters(float attack, float decay, float sustain, float release);
+
 
 
 private:
@@ -43,6 +45,8 @@ private:
     float pitchSemitones1 = 0.0f; // Pitch для первого осциллятора
     float pitchSemitones2 = 0.0f; // Pitch для второго осциллятора
 
-    juce::ADSR adsr;
+    CustomEnvelope envelope;
+
+    float sustainLevel = 0.7f;
 };
 

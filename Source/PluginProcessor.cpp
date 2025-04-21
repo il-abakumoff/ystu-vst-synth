@@ -2,6 +2,9 @@
 #include "PluginEditor.h"
 #include "WavetableVoice.h"
 #include "SynthSound.h"
+#include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_audio_devices/juce_audio_devices.h>
+
 
 NewProjectAudioProcessor::NewProjectAudioProcessor()
     : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
@@ -25,6 +28,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
+    // osc params
     layout.add(std::make_unique<juce::AudioParameterChoice>(
         "osc1Wave", "Oscillator 1 Wave",
         juce::StringArray{ "Sine", "Saw", "Square" }, 0));
@@ -49,6 +53,36 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
         "osc2Pitch", "Oscillator 2 Pitch",
         juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
 
+    // Amp ADSR params
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "attack", "Attack",
+        juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.1f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "decay", "Decay",
+        juce::NormalisableRange<float>(0.0f, 3.0f, 0.01f), 0.3f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "sustain", "Sustain",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "release", "Release",
+        juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.2f));
+
+    // FILTER
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        "filterType", "Filter Type",
+        juce::StringArray{ "Low-pass", "High-pass" }, 0));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "filterCutoff", "Filter Cutoff",
+        juce::NormalisableRange<float>(20.0f, 20000.0f, 0.1f, 0.3f), 1000.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "filterResonance", "Filter Resonance",
+        juce::NormalisableRange<float>(0.1f, 2.0f, 0.01f), 0.7f));
+
     return layout;
 }
 
@@ -56,12 +90,10 @@ void NewProjectAudioProcessor::initWavetables()
 {
     const int tableSize = 1024;
 
-    // Синусоида
     sineTable.resize(tableSize);
     for (int i = 0; i < tableSize; ++i)
         sineTable[i] = std::sin(2.0f * juce::MathConstants<float>::pi * i / tableSize);
 
-    // Пилообразная
     sawTable.resize(tableSize);
     for (int i = 0; i < tableSize; ++i)
     {
@@ -71,7 +103,6 @@ void NewProjectAudioProcessor::initWavetables()
         sawTable[i] = saw * 0.5f;
     }
 
-    // Прямоугольная
     squareTable.resize(tableSize);
     for (int i = 0; i < tableSize; ++i)
         squareTable[i] = (i < tableSize / 2) ? 1.0f : -1.0f;
@@ -156,6 +187,16 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
             voice->setSampleRate(sampleRate);
         }
     }
+
+    filterSpec.sampleRate = sampleRate;
+    filterSpec.maximumBlockSize = samplesPerBlock;
+    filterSpec.numChannels = getTotalNumOutputChannels();
+
+    filter.prepare(filterSpec);
+    filter.reset();
+
+    // Начальные параметры
+    updateFilterParameters(1000.0f, 0.7f, 0);
 }
 
 void NewProjectAudioProcessor::releaseResources()
@@ -194,6 +235,12 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 {
     buffer.clear();
 
+    float attack = apvts.getRawParameterValue("attack")->load();
+    float decay = apvts.getRawParameterValue("decay")->load();
+    float sustain = apvts.getRawParameterValue("sustain")->load();
+    float release = apvts.getRawParameterValue("release")->load();
+
+
     for (int i = 0; i < synth.getNumVoices(); ++i)
     {
         if (auto* voice = dynamic_cast<WavetableVoice*>(synth.getVoice(i)))
@@ -209,6 +256,12 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             // Устанавливаем параметры
             voice->setVolume(osc1Volume, osc2Volume);
             voice->setPitch(osc1Pitch, osc2Pitch);
+            voice->setAdsrParameters(
+                apvts.getRawParameterValue("attack")->load(),
+                apvts.getRawParameterValue("decay")->load(),
+                apvts.getRawParameterValue("sustain")->load(),
+                apvts.getRawParameterValue("release")->load()
+            );
 
             // Устанавливаем разные волновые таблицы для каждого осциллятора
             int osc1WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc1Wave")->load());
@@ -216,7 +269,6 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
             const std::vector<float>* table1 = nullptr;
             const std::vector<float>* table2 = nullptr;
-
             switch (osc1WaveIndex) {
             case 0: table1 = &sineTable; break;
             case 1: table1 = &sawTable; break;
@@ -235,6 +287,19 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     }
 
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+
+    // Обновление параметров фильтра
+    float cutoff = apvts.getRawParameterValue("filterCutoff")->load();
+    float resonance = apvts.getRawParameterValue("filterResonance")->load();
+    int filterType = apvts.getRawParameterValue("filterType")->load();
+
+    // Обновляем параметры фильтра
+    updateFilterParameters(cutoff, resonance, filterType);
+
+    // Обработка фильтром
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+    filter.process(context);
 }
 
 //==============================================================================
@@ -280,4 +345,21 @@ void NewProjectAudioProcessor::setupSynth()
 
     // Добавляем звук (обязательно)
     synth.addSound(new SynthSound());
+}
+
+void NewProjectAudioProcessor::updateFilterParameters(float cutoff, float resonance, int type)
+{
+    // Устанавливаем базовые параметры
+    filter.setCutoffFrequency(cutoff);
+    filter.setResonance(resonance);
+
+    // Настраиваем тип фильтра через параметры
+    switch (type) {
+    case 0: // Low-pass
+        filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+        break;
+    case 1: // High-pass
+        filter.setType(juce::dsp::StateVariableTPTFilterType::highpass);
+        break;
+    }
 }
