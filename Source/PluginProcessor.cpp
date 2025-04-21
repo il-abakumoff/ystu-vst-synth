@@ -1,28 +1,82 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin processor.
-
-  ==============================================================================
-*/
-
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "WavetableVoice.h"
+#include "SynthSound.h"
 
-//==============================================================================
 NewProjectAudioProcessor::NewProjectAudioProcessor()
-#ifndef JucePlugin_PreferredChannelConfigurations
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       )
-#endif
+    : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+    apvts(*this, nullptr, "Parameters", createParameters())
 {
+
+    // Инициализация таблиц
+    initWavetables();
+
+    for (int i = 0; i < kMaxVoices; ++i)
+    {
+        synth.addVoice(new WavetableVoice(&sineTable, &sineTable));
+    }
+    synth.addSound(new SynthSound());
+
+    // Настройка синтезатора
+    setupSynth();
 }
+
+juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::createParameters()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        "osc1Wave", "Oscillator 1 Wave",
+        juce::StringArray{ "Sine", "Saw", "Square" }, 0));
+
+    layout.add(std::make_unique<juce::AudioParameterChoice>(
+        "osc2Wave", "Oscillator 2 Wave",
+        juce::StringArray{ "Sine", "Saw", "Square" }, 0));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "osc1Volume", "Oscillator 1 Volume",
+        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "osc2Volume", "Oscillator 2 Volume",
+        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "osc1Pitch", "Oscillator 1 Pitch",
+        juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "osc2Pitch", "Oscillator 2 Pitch",
+        juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+
+    return layout;
+}
+
+void NewProjectAudioProcessor::initWavetables()
+{
+    const int tableSize = 1024;
+
+    // Синусоида
+    sineTable.resize(tableSize);
+    for (int i = 0; i < tableSize; ++i)
+        sineTable[i] = std::sin(2.0f * juce::MathConstants<float>::pi * i / tableSize);
+
+    // Пилообразная
+    sawTable.resize(tableSize);
+    for (int i = 0; i < tableSize; ++i)
+    {
+        float saw = 0.0f;
+        for (int harmonic = 1; harmonic <= 8; ++harmonic)
+            saw += std::sin(2.0f * juce::MathConstants<float>::pi * i * harmonic / tableSize) / harmonic;
+        sawTable[i] = saw * 0.5f;
+    }
+
+    // Прямоугольная
+    squareTable.resize(tableSize);
+    for (int i = 0; i < tableSize; ++i)
+        squareTable[i] = (i < tableSize / 2) ? 1.0f : -1.0f;
+}
+
 
 NewProjectAudioProcessor::~NewProjectAudioProcessor()
 {
@@ -93,8 +147,15 @@ void NewProjectAudioProcessor::changeProgramName (int index, const juce::String&
 //==============================================================================
 void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    synth.setCurrentPlaybackSampleRate(sampleRate);
+
+    for (int i = 0; i < synth.getNumVoices(); ++i)
+    {
+        if (auto* voice = dynamic_cast<WavetableVoice*>(synth.getVoice(i)))
+        {
+            voice->setSampleRate(sampleRate);
+        }
+    }
 }
 
 void NewProjectAudioProcessor::releaseResources()
@@ -131,31 +192,49 @@ bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
 
 void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-    juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
+    buffer.clear();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    for (int i = 0; i < synth.getNumVoices(); ++i)
     {
-        auto* channelData = buffer.getWritePointer (channel);
+        if (auto* voice = dynamic_cast<WavetableVoice*>(synth.getVoice(i)))
+        {
+            // Обновляем параметры для ОСЦИЛЛЯТОРА 1
+            float osc1Volume = apvts.getRawParameterValue("osc1Volume")->load();
+            float osc1Pitch = apvts.getRawParameterValue("osc1Pitch")->load();
 
-        // ..do something to the data...
+            // Обновляем параметры для ОСЦИЛЛЯТОРА 2
+            float osc2Volume = apvts.getRawParameterValue("osc2Volume")->load();
+            float osc2Pitch = apvts.getRawParameterValue("osc2Pitch")->load();
+
+            // Устанавливаем параметры
+            voice->setVolume(osc1Volume, osc2Volume);
+            voice->setPitch(osc1Pitch, osc2Pitch);
+
+            // Устанавливаем разные волновые таблицы для каждого осциллятора
+            int osc1WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc1Wave")->load());
+            int osc2WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc2Wave")->load());
+
+            const std::vector<float>* table1 = nullptr;
+            const std::vector<float>* table2 = nullptr;
+
+            switch (osc1WaveIndex) {
+            case 0: table1 = &sineTable; break;
+            case 1: table1 = &sawTable; break;
+            case 2: table1 = &squareTable; break;
+            }
+
+            switch (osc2WaveIndex) {
+            case 0: table2 = &sineTable; break;
+            case 1: table2 = &sawTable; break;
+            case 2: table2 = &squareTable; break;
+            }
+
+            voice->setWaveform1(table1);
+            voice->setWaveform2(table2); // Теперь разные таблицы
+        }
     }
+
+    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 }
 
 //==============================================================================
@@ -188,4 +267,17 @@ void NewProjectAudioProcessor::setStateInformation (const void* data, int sizeIn
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new NewProjectAudioProcessor();
+}
+
+void NewProjectAudioProcessor::setupSynth()
+{
+    synth.clearVoices();
+    synth.clearSounds();
+
+    // Добавляем голоса
+    for (int i = 0; i < kMaxVoices; ++i)
+        synth.addVoice(new WavetableVoice(&sineTable, &sineTable));
+
+    // Добавляем звук (обязательно)
+    synth.addSound(new SynthSound());
 }
