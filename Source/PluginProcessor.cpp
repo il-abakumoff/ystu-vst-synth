@@ -83,6 +83,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
         "filterResonance", "Filter Resonance",
         juce::NormalisableRange<float>(0.1f, 2.0f, 0.01f), 0.7f));
 
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "modAttack", "Mod Attack",
+        juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.1f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "modDecay", "Mod Decay",
+        juce::NormalisableRange<float>(0.0f, 3.0f, 0.01f), 0.3f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "modSustain", "Mod Sustain",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "modRelease", "Mod Release",
+        juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.2f));
     return layout;
 }
 
@@ -108,12 +124,10 @@ void NewProjectAudioProcessor::initWavetables()
         squareTable[i] = (i < tableSize / 2) ? 1.0f : -1.0f;
 }
 
-
 NewProjectAudioProcessor::~NewProjectAudioProcessor()
 {
 }
 
-//==============================================================================
 const juce::String NewProjectAudioProcessor::getName() const
 {
     return JucePlugin_Name;
@@ -175,7 +189,6 @@ void NewProjectAudioProcessor::changeProgramName (int index, const juce::String&
 {
 }
 
-//==============================================================================
 void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     synth.setCurrentPlaybackSampleRate(sampleRate);
@@ -201,8 +214,7 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
 
 void NewProjectAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -212,15 +224,10 @@ bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
     juce::ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
-    // This checks if the input layout matches the output layout
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
@@ -240,6 +247,12 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     float sustain = apvts.getRawParameterValue("sustain")->load();
     float release = apvts.getRawParameterValue("release")->load();
 
+    modEnvelope.setParameters(
+        apvts.getRawParameterValue("modAttack")->load(),
+        apvts.getRawParameterValue("modDecay")->load(),
+        apvts.getRawParameterValue("modSustain")->load(),
+        apvts.getRawParameterValue("modRelease")->load()
+    );
 
     for (int i = 0; i < synth.getNumVoices(); ++i)
     {
@@ -302,7 +315,6 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     filter.process(context);
 }
 
-//==============================================================================
 bool NewProjectAudioProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
@@ -313,7 +325,6 @@ juce::AudioProcessorEditor* NewProjectAudioProcessor::createEditor()
     return new NewProjectAudioProcessorEditor (*this);
 }
 
-//==============================================================================
 void NewProjectAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // You should use this method to store your parameters in the memory block.
@@ -327,8 +338,6 @@ void NewProjectAudioProcessor::setStateInformation (const void* data, int sizeIn
     // whose contents will have been created by the getStateInformation() call.
 }
 
-//==============================================================================
-// This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new NewProjectAudioProcessor();

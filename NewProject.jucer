@@ -5,6 +5,12 @@
               pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="Fic8Cf" name="YSTU-Synth">
     <GROUP id="{F3FF0CAB-C257-0EC2-54F3-C1EFAA0CA188}" name="Source">
+      <FILE id="AYSN3g" name="CustomLookAndFeel.cpp" compile="1" resource="0"
+            file="Source/CustomLookAndFeel.cpp"/>
+      <FILE id="Mb9a57" name="CustomLookAndFeel.h" compile="0" resource="0"
+            file="Source/CustomLookAndFeel.h"/>
+      <FILE id="DvEb7X" name="SynthSound.cpp" compile="1" resource="0" file="Source/SynthSound.cpp"/>
+      <FILE id="MNoVs9" name="SynthSound.h" compile="0" resource="0" file="Source/SynthSound.h"/>
       <FILE id="QW0e80" name="CustomEnvelope.cpp" compile="1" resource="0"
             file="Source/CustomEnvelope.cpp"/>
       <FILE id="AVgWH8" name="CustomEnvelope.h" compile="0" resource="0"

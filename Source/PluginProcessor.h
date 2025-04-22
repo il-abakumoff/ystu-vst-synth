@@ -73,6 +73,11 @@ public:
     juce::AudioParameterFloat* filterCutoffParam;
     juce::AudioParameterFloat* filterResonanceParam;
 
+    juce::AudioParameterFloat* modAttackParam;
+    juce::AudioParameterFloat* modDecayParam;
+    juce::AudioParameterFloat* modSustainParam;
+    juce::AudioParameterFloat* modReleaseParam;
+
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessor)
 
@@ -86,4 +91,6 @@ private:
 
     juce::dsp::StateVariableTPTFilter<float> filter;
     juce::dsp::ProcessSpec filterSpec;
+
+    CustomEnvelope modEnvelope;
 };
