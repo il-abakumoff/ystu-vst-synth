@@ -4,7 +4,7 @@
 #include "SynthSound.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_devices/juce_audio_devices.h>
-
+#include <juce_core/juce_core.h>
 
 NewProjectAudioProcessor::NewProjectAudioProcessor()
     : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
@@ -325,17 +325,33 @@ juce::AudioProcessorEditor* NewProjectAudioProcessor::createEditor()
     return new NewProjectAudioProcessorEditor (*this);
 }
 
-void NewProjectAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+
+void NewProjectAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    // —оздаем XML-структуру дл€ сохранени€
+    auto state = apvts.copyState(); // јвтоматически сохран€ет все параметры APVTS
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+
+    // ƒополнительно можно сохранить другие данные (если есть)
+    // xml->setAttribute("customData", someValue);
+
+    //  опируем XML в бинарный блок
+    copyXmlToBinary(*xml, destData);
 }
 
-void NewProjectAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void NewProjectAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    // ¬осстанавливаем из бинарных данных
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+
+    if (xmlState.get() != nullptr)
+    {
+        // ¬осстанавливаем параметры APVTS
+        apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+
+        // ƒополнительно можно восстановить другие данные
+        // someValue = xmlState->getDoubleAttribute("customData", defaultValue);
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
