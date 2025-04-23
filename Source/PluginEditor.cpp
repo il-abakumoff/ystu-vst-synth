@@ -27,193 +27,236 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioPr
 
 void NewProjectAudioProcessorEditor::setupMainPanel()
 {
-    // Осциллятор 1
-    mainPanel->addAndMakeVisible(mainPanel->osc1WaveSelector);
-    mainPanel->osc1WaveSelector.addItem("Sine", 1);
-    mainPanel->osc1WaveSelector.addItem("Saw", 2);
-    mainPanel->osc1WaveSelector.addItem("Square", 3);
-    mainPanel->osc1WaveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
-        audioProcessor.getAPVTS(), "osc1Wave", mainPanel->osc1WaveSelector);
+    // OSC 1
+    {
+        
+        mainPanel->addAndMakeVisible(mainPanel->osc1WaveSelector);
+        mainPanel->osc1WaveSelector.addItem("Sine", 1);
+        mainPanel->osc1WaveSelector.addItem("Saw", 2);
+        mainPanel->osc1WaveSelector.addItem("Square", 3);
+        mainPanel->osc1WaveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+            audioProcessor.getAPVTS(), "osc1Wave", mainPanel->osc1WaveSelector);
 
-    mainPanel->addAndMakeVisible(mainPanel->osc1VolumeSlider);
-    mainPanel->osc1VolumeSlider.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->osc1VolumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
-    mainPanel->osc1VolumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "osc1Volume", mainPanel->osc1VolumeSlider);
+        mainPanel->addAndMakeVisible(mainPanel->osc1VolumeSlider);
+        mainPanel->osc1VolumeSlider.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->osc1VolumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+        mainPanel->osc1VolumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "osc1Volume", mainPanel->osc1VolumeSlider);
 
-    mainPanel->addAndMakeVisible(mainPanel->osc1PitchSlider);
-    mainPanel->osc1PitchSlider.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->osc1PitchSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
-    mainPanel->osc1PitchAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "osc1Pitch", mainPanel->osc1PitchSlider);
+        mainPanel->addAndMakeVisible(mainPanel->osc1PitchSlider);
+        mainPanel->osc1PitchSlider.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->osc1PitchSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+        mainPanel->osc1PitchAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "osc1Pitch", mainPanel->osc1PitchSlider);
 
-    // Осциллятор 2
-    mainPanel->addAndMakeVisible(mainPanel->osc2WaveSelector);
-    mainPanel->osc2WaveSelector.addItem("Sine", 1);
-    mainPanel->osc2WaveSelector.addItem("Saw", 2);
-    mainPanel->osc2WaveSelector.addItem("Square", 3);
-    mainPanel->osc2WaveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
-        audioProcessor.getAPVTS(), "osc2Wave", mainPanel->osc2WaveSelector);
+        mainPanel->addAndMakeVisible(mainPanel->osc1FineSlider);
+        mainPanel->osc1FineSlider.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->osc1FineSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+        mainPanel->osc1FineAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "osc1Fine", mainPanel->osc1FineSlider);
+    }
 
-    mainPanel->addAndMakeVisible(mainPanel->osc2VolumeSlider);
-    mainPanel->osc2VolumeSlider.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->osc2VolumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
-    mainPanel->osc2VolumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "osc2Volume", mainPanel->osc2VolumeSlider);
+    // OSC 2
+    {
+        mainPanel->addAndMakeVisible(mainPanel->osc2WaveSelector);
+        mainPanel->osc2WaveSelector.addItem("Sine", 1);
+        mainPanel->osc2WaveSelector.addItem("Saw", 2);
+        mainPanel->osc2WaveSelector.addItem("Square", 3);
+        mainPanel->osc2WaveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+            audioProcessor.getAPVTS(), "osc2Wave", mainPanel->osc2WaveSelector);
 
-    mainPanel->addAndMakeVisible(mainPanel->osc2PitchSlider);
-    mainPanel->osc2PitchSlider.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->osc2PitchSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
-    mainPanel->osc2PitchAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "osc2Pitch", mainPanel->osc2PitchSlider);
+        mainPanel->addAndMakeVisible(mainPanel->osc2VolumeSlider);
+        mainPanel->osc2VolumeSlider.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->osc2VolumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+        mainPanel->osc2VolumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "osc2Volume", mainPanel->osc2VolumeSlider);
 
-    // Подписи осцилляторов
-    mainPanel->addAndMakeVisible(mainPanel->osc1VolumeLabel);
-    mainPanel->osc1VolumeLabel.setText("Volume", juce::dontSendNotification);
-    mainPanel->osc1VolumeLabel.attachToComponent(&mainPanel->osc1VolumeSlider, false);
-    mainPanel->osc1VolumeLabel.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->osc2PitchSlider);
+        mainPanel->osc2PitchSlider.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->osc2PitchSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+        mainPanel->osc2PitchAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "osc2Pitch", mainPanel->osc2PitchSlider);
+        
+        mainPanel->addAndMakeVisible(mainPanel->osc2FineSlider);
+        mainPanel->osc2FineSlider.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->osc2FineSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+        mainPanel->osc2FineAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "osc2Fine", mainPanel->osc2FineSlider);
+    }
 
-    mainPanel->addAndMakeVisible(mainPanel->osc1PitchLabel);
-    mainPanel->osc1PitchLabel.setText("Pitch", juce::dontSendNotification);
-    mainPanel->osc1PitchLabel.attachToComponent(&mainPanel->osc1PitchSlider, false);
-    mainPanel->osc1PitchLabel.setJustificationType(juce::Justification::centred);
+    // OSC LABELS
+    {
+        mainPanel->addAndMakeVisible(mainPanel->osc1VolumeLabel);
+        mainPanel->osc1VolumeLabel.setText("Volume", juce::dontSendNotification);
+        mainPanel->osc1VolumeLabel.attachToComponent(&mainPanel->osc1VolumeSlider, false);
+        mainPanel->osc1VolumeLabel.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->osc2VolumeLabel);
-    mainPanel->osc2VolumeLabel.setText("Volume", juce::dontSendNotification);
-    mainPanel->osc2VolumeLabel.attachToComponent(&mainPanel->osc2VolumeSlider, false);
-    mainPanel->osc2VolumeLabel.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->osc1PitchLabel);
+        mainPanel->osc1PitchLabel.setText("Pitch", juce::dontSendNotification);
+        mainPanel->osc1PitchLabel.attachToComponent(&mainPanel->osc1PitchSlider, false);
+        mainPanel->osc1PitchLabel.setJustificationType(juce::Justification::centred);        
+        
+        mainPanel->addAndMakeVisible(mainPanel->osc1FineLabel);
+        mainPanel->osc1FineLabel.setText("Fine", juce::dontSendNotification);
+        mainPanel->osc1FineLabel.attachToComponent(&mainPanel->osc1FineSlider, false);
+        mainPanel->osc1FineLabel.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->osc2PitchLabel);
-    mainPanel->osc2PitchLabel.setText("Pitch", juce::dontSendNotification);
-    mainPanel->osc2PitchLabel.attachToComponent(&mainPanel->osc2PitchSlider, false);
-    mainPanel->osc2PitchLabel.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->osc2VolumeLabel);
+        mainPanel->osc2VolumeLabel.setText("Volume", juce::dontSendNotification);
+        mainPanel->osc2VolumeLabel.attachToComponent(&mainPanel->osc2VolumeSlider, false);
+        mainPanel->osc2VolumeLabel.setJustificationType(juce::Justification::centred);
+
+        mainPanel->addAndMakeVisible(mainPanel->osc2PitchLabel);
+        mainPanel->osc2PitchLabel.setText("Pitch", juce::dontSendNotification);
+        mainPanel->osc2PitchLabel.attachToComponent(&mainPanel->osc2PitchSlider, false);
+        mainPanel->osc2PitchLabel.setJustificationType(juce::Justification::centred);
+
+        mainPanel->addAndMakeVisible(mainPanel->osc2FineLabel);
+        mainPanel->osc2FineLabel.setText("Fine", juce::dontSendNotification);
+        mainPanel->osc2FineLabel.attachToComponent(&mainPanel->osc2FineSlider, false);
+        mainPanel->osc2FineLabel.setJustificationType(juce::Justification::centred);
+    }
 
     // AMP ADSR
-    mainPanel->addAndMakeVisible(mainPanel->attackSlider1);
-    mainPanel->attackSlider1.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->attackSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    mainPanel->attackAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "attack", mainPanel->attackSlider1);
+    {
+        mainPanel->addAndMakeVisible(mainPanel->attackSlider1);
+        mainPanel->attackSlider1.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->attackSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        mainPanel->attackAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "attack", mainPanel->attackSlider1);
 
-    mainPanel->addAndMakeVisible(mainPanel->decaySlider1);
-    mainPanel->decaySlider1.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->decaySlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    mainPanel->decayAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "decay", mainPanel->decaySlider1);
+        mainPanel->addAndMakeVisible(mainPanel->decaySlider1);
+        mainPanel->decaySlider1.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->decaySlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        mainPanel->decayAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "decay", mainPanel->decaySlider1);
 
-    mainPanel->addAndMakeVisible(mainPanel->sustainSlider1);
-    mainPanel->sustainSlider1.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->sustainSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    mainPanel->sustainAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "sustain", mainPanel->sustainSlider1);
+        mainPanel->addAndMakeVisible(mainPanel->sustainSlider1);
+        mainPanel->sustainSlider1.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->sustainSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        mainPanel->sustainAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "sustain", mainPanel->sustainSlider1);
 
-    mainPanel->addAndMakeVisible(mainPanel->releaseSlider1);
-    mainPanel->releaseSlider1.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->releaseSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    mainPanel->releaseAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "release", mainPanel->releaseSlider1);
+        mainPanel->addAndMakeVisible(mainPanel->releaseSlider1);
+        mainPanel->releaseSlider1.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->releaseSlider1.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        mainPanel->releaseAttachment1 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "release", mainPanel->releaseSlider1);
+    }
 
-    // Подписи ADSR
-    mainPanel->addAndMakeVisible(mainPanel->attackLabel1);
-    mainPanel->attackLabel1.setText("Attack", juce::dontSendNotification);
-    mainPanel->attackLabel1.attachToComponent(&mainPanel->attackSlider1, false);
-    mainPanel->attackLabel1.setJustificationType(juce::Justification::centred);
+    // AMP ADSR LABELS
+    {
+        mainPanel->addAndMakeVisible(mainPanel->attackLabel1);
+        mainPanel->attackLabel1.setText("Attack", juce::dontSendNotification);
+        mainPanel->attackLabel1.attachToComponent(&mainPanel->attackSlider1, false);
+        mainPanel->attackLabel1.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->decayLabel1);
-    mainPanel->decayLabel1.setText("Decay", juce::dontSendNotification);
-    mainPanel->decayLabel1.attachToComponent(&mainPanel->decaySlider1, false);
-    mainPanel->decayLabel1.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->decayLabel1);
+        mainPanel->decayLabel1.setText("Decay", juce::dontSendNotification);
+        mainPanel->decayLabel1.attachToComponent(&mainPanel->decaySlider1, false);
+        mainPanel->decayLabel1.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->sustainLabel1);
-    mainPanel->sustainLabel1.setText("Sustain", juce::dontSendNotification);
-    mainPanel->sustainLabel1.attachToComponent(&mainPanel->sustainSlider1, false);
-    mainPanel->sustainLabel1.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->sustainLabel1);
+        mainPanel->sustainLabel1.setText("Sustain", juce::dontSendNotification);
+        mainPanel->sustainLabel1.attachToComponent(&mainPanel->sustainSlider1, false);
+        mainPanel->sustainLabel1.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->releaseLabel1);
-    mainPanel->releaseLabel1.setText("Release", juce::dontSendNotification);
-    mainPanel->releaseLabel1.attachToComponent(&mainPanel->releaseSlider1, false);
-    mainPanel->releaseLabel1.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->releaseLabel1);
+        mainPanel->releaseLabel1.setText("Release", juce::dontSendNotification);
+        mainPanel->releaseLabel1.attachToComponent(&mainPanel->releaseSlider1, false);
+        mainPanel->releaseLabel1.setJustificationType(juce::Justification::centred);
+    }
 
     // MOD ADSR
-    mainPanel->addAndMakeVisible(mainPanel->attackSlider2);
-    mainPanel->attackSlider2.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->attackSlider2.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    mainPanel->attackAttachment2 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "modAttack", mainPanel->attackSlider2);
+    {
+        mainPanel->addAndMakeVisible(mainPanel->attackSlider2);
+        mainPanel->attackSlider2.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->attackSlider2.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        mainPanel->attackAttachment2 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "modAttack", mainPanel->attackSlider2);
 
-    mainPanel->addAndMakeVisible(mainPanel->decaySlider2);
-    mainPanel->decaySlider2.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->decaySlider2.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    mainPanel->decayAttachment2 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "modDecay", mainPanel->decaySlider2);
+        mainPanel->addAndMakeVisible(mainPanel->decaySlider2);
+        mainPanel->decaySlider2.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->decaySlider2.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        mainPanel->decayAttachment2 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "modDecay", mainPanel->decaySlider2);
 
-    mainPanel->addAndMakeVisible(mainPanel->sustainSlider2);
-    mainPanel->sustainSlider2.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->sustainSlider2.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    mainPanel->sustainAttachment2 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "modSustain", mainPanel->sustainSlider2);
+        mainPanel->addAndMakeVisible(mainPanel->sustainSlider2);
+        mainPanel->sustainSlider2.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->sustainSlider2.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        mainPanel->sustainAttachment2 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "modSustain", mainPanel->sustainSlider2);
 
-    mainPanel->addAndMakeVisible(mainPanel->releaseSlider2);
-    mainPanel->releaseSlider2.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->releaseSlider2.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    mainPanel->releaseAttachment2 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "modRelease", mainPanel->releaseSlider2);
+        mainPanel->addAndMakeVisible(mainPanel->releaseSlider2);
+        mainPanel->releaseSlider2.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->releaseSlider2.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        mainPanel->releaseAttachment2 = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "modRelease", mainPanel->releaseSlider2);
+    }
 
-    // Подписи MOD ADSR
-    mainPanel->addAndMakeVisible(mainPanel->attackLabel2);
-    mainPanel->attackLabel2.setText("Mod Attack", juce::dontSendNotification);
-    mainPanel->attackLabel2.attachToComponent(&mainPanel->attackSlider2, false);
-    mainPanel->attackLabel2.setJustificationType(juce::Justification::centred);
+    // MOD ADSR LABELS
+    {
+        mainPanel->addAndMakeVisible(mainPanel->attackLabel2);
+        mainPanel->attackLabel2.setText("Mod Attack", juce::dontSendNotification);
+        mainPanel->attackLabel2.attachToComponent(&mainPanel->attackSlider2, false);
+        mainPanel->attackLabel2.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->decayLabel2);
-    mainPanel->decayLabel2.setText("Mod Decay", juce::dontSendNotification);
-    mainPanel->decayLabel2.attachToComponent(&mainPanel->decaySlider2, false);
-    mainPanel->decayLabel2.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->decayLabel2);
+        mainPanel->decayLabel2.setText("Mod Decay", juce::dontSendNotification);
+        mainPanel->decayLabel2.attachToComponent(&mainPanel->decaySlider2, false);
+        mainPanel->decayLabel2.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->sustainLabel2);
-    mainPanel->sustainLabel2.setText("Mod Sustain", juce::dontSendNotification);
-    mainPanel->sustainLabel2.attachToComponent(&mainPanel->sustainSlider2, false);
-    mainPanel->sustainLabel2.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->sustainLabel2);
+        mainPanel->sustainLabel2.setText("Mod Sustain", juce::dontSendNotification);
+        mainPanel->sustainLabel2.attachToComponent(&mainPanel->sustainSlider2, false);
+        mainPanel->sustainLabel2.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->releaseLabel2);
-    mainPanel->releaseLabel2.setText("Mod Release", juce::dontSendNotification);
-    mainPanel->releaseLabel2.attachToComponent(&mainPanel->releaseSlider2, false);
-    mainPanel->releaseLabel2.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->releaseLabel2);
+        mainPanel->releaseLabel2.setText("Mod Release", juce::dontSendNotification);
+        mainPanel->releaseLabel2.attachToComponent(&mainPanel->releaseSlider2, false);
+        mainPanel->releaseLabel2.setJustificationType(juce::Justification::centred);
+    }
 
-    // Фильтр
-    mainPanel->addAndMakeVisible(mainPanel->filterTypeSelector);
-    mainPanel->filterTypeSelector.addItem("Low-pass", 1);
-    mainPanel->filterTypeSelector.addItem("High-pass", 2);
-    mainPanel->filterTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
-        audioProcessor.getAPVTS(), "filterType", mainPanel->filterTypeSelector);
+    // FILTER
+    {
+        mainPanel->addAndMakeVisible(mainPanel->filterTypeSelector);
+        mainPanel->filterTypeSelector.addItem("Low-pass", 1);
+        mainPanel->filterTypeSelector.addItem("High-pass", 2);
+        mainPanel->filterTypeSelector.addItem("Band-pass", 3);
+        mainPanel->filterTypeSelector.addItem("Notch", 4);
+        mainPanel->filterTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+            audioProcessor.getAPVTS(), "filterType", mainPanel->filterTypeSelector);
 
-    mainPanel->addAndMakeVisible(mainPanel->filterCutoffSlider);
-    mainPanel->filterCutoffSlider.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->filterCutoffSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
-    mainPanel->filterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "filterCutoff", mainPanel->filterCutoffSlider);
+        mainPanel->addAndMakeVisible(mainPanel->filterCutoffSlider);
+        mainPanel->filterCutoffSlider.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->filterCutoffSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+        mainPanel->filterCutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "filterCutoff", mainPanel->filterCutoffSlider);
 
-    mainPanel->addAndMakeVisible(mainPanel->filterResonanceSlider);
-    mainPanel->filterResonanceSlider.setSliderStyle(juce::Slider::Rotary);
-    mainPanel->filterResonanceSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
-    mainPanel->filterResonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "filterResonance", mainPanel->filterResonanceSlider);
+        mainPanel->addAndMakeVisible(mainPanel->filterResonanceSlider);
+        mainPanel->filterResonanceSlider.setSliderStyle(juce::Slider::Rotary);
+        mainPanel->filterResonanceSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 80, 20);
+        mainPanel->filterResonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            audioProcessor.getAPVTS(), "filterResonance", mainPanel->filterResonanceSlider);
+    }
 
-    // Подписи фильтра
-    mainPanel->addAndMakeVisible(mainPanel->filterTypeLabel);
-    mainPanel->filterTypeLabel.setText("Filter Type", juce::dontSendNotification);
-    mainPanel->filterTypeLabel.attachToComponent(&mainPanel->filterTypeSelector, false);
-    mainPanel->filterTypeLabel.setJustificationType(juce::Justification::centred);
+    // FILTER LABELS
+    {
+        mainPanel->addAndMakeVisible(mainPanel->filterTypeLabel);
+        mainPanel->filterTypeLabel.setText("Filter Type", juce::dontSendNotification);
+        mainPanel->filterTypeLabel.attachToComponent(&mainPanel->filterTypeSelector, false);
+        mainPanel->filterTypeLabel.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->filterCutoffLabel);
-    mainPanel->filterCutoffLabel.setText("Cutoff", juce::dontSendNotification);
-    mainPanel->filterCutoffLabel.attachToComponent(&mainPanel->filterCutoffSlider, false);
-    mainPanel->filterCutoffLabel.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->filterCutoffLabel);
+        mainPanel->filterCutoffLabel.setText("Cutoff", juce::dontSendNotification);
+        mainPanel->filterCutoffLabel.attachToComponent(&mainPanel->filterCutoffSlider, false);
+        mainPanel->filterCutoffLabel.setJustificationType(juce::Justification::centred);
 
-    mainPanel->addAndMakeVisible(mainPanel->filterResonanceLabel);
-    mainPanel->filterResonanceLabel.setText("Resonance", juce::dontSendNotification);
-    mainPanel->filterResonanceLabel.attachToComponent(&mainPanel->filterResonanceSlider, false);
-    mainPanel->filterResonanceLabel.setJustificationType(juce::Justification::centred);
+        mainPanel->addAndMakeVisible(mainPanel->filterResonanceLabel);
+        mainPanel->filterResonanceLabel.setText("Resonance", juce::dontSendNotification);
+        mainPanel->filterResonanceLabel.attachToComponent(&mainPanel->filterResonanceSlider, false);
+        mainPanel->filterResonanceLabel.setJustificationType(juce::Justification::centred);
+    }
 }
 
 void NewProjectAudioProcessorEditor::setupMatrixPanel()
@@ -301,11 +344,7 @@ void NewProjectAudioProcessorEditor::paint(juce::Graphics& g)
 
 void NewProjectAudioProcessorEditor::resized()
 {
-    // Устанавливаем размеры TabbedComponent
     tabs.setBounds(getLocalBounds());
-
-    // TabbedComponent автоматически управляет размерами содержимого вкладок
-    // Дополнительные настройки не требуются
 }
 
 void NewProjectAudioProcessorEditor::MainPanel::resized()
@@ -324,14 +363,17 @@ void NewProjectAudioProcessorEditor::MainPanel::resized()
         osc1Area.removeFromTop(margin); // Добавляем отступ между выбором волны и слайдерами
 
         auto osc1SliderArea = osc1Area.removeFromTop(sliderHeight);
-        osc1VolumeSlider.setBounds(osc1SliderArea.removeFromLeft(osc1SliderArea.getWidth() / 2));
-        osc1PitchSlider.setBounds(osc1SliderArea);
+        osc1VolumeSlider.setBounds(osc1SliderArea.removeFromLeft(osc1SliderArea.getWidth() / 3));
+        osc1PitchSlider.setBounds(osc1SliderArea.removeFromLeft(osc1SliderArea.getWidth() / 2));
+        osc1FineSlider.setBounds(osc1SliderArea);
 
         // Смещаем лейблы вниз от слайдеров
         osc1VolumeLabel.setBounds(osc1VolumeSlider.getX(), osc1VolumeSlider.getBottom() + 5,
             osc1VolumeSlider.getWidth(), labelHeight);
         osc1PitchLabel.setBounds(osc1PitchSlider.getX(), osc1PitchSlider.getBottom() + 5,
             osc1PitchSlider.getWidth(), labelHeight);
+        osc1FineLabel.setBounds(osc1FineSlider.getX(), osc1FineSlider.getBottom() + 5,
+            osc1FineSlider.getWidth(), labelHeight);
 
         // Осциллятор 2
         auto osc2Area = oscArea.reduced(margin);
@@ -339,13 +381,16 @@ void NewProjectAudioProcessorEditor::MainPanel::resized()
         osc2Area.removeFromTop(margin); // Добавляем отступ
 
         auto osc2SliderArea = osc2Area.removeFromTop(sliderHeight);
-        osc2VolumeSlider.setBounds(osc2SliderArea.removeFromLeft(osc2SliderArea.getWidth() / 2));
-        osc2PitchSlider.setBounds(osc2SliderArea);
+        osc2VolumeSlider.setBounds(osc2SliderArea.removeFromLeft(osc2SliderArea.getWidth() / 3));
+        osc2PitchSlider.setBounds(osc2SliderArea.removeFromLeft(osc2SliderArea.getWidth() / 2));
+        osc2FineSlider.setBounds(osc2SliderArea);
 
         osc2VolumeLabel.setBounds(osc2VolumeSlider.getX(), osc2VolumeSlider.getBottom() + 5,
             osc2VolumeSlider.getWidth(), labelHeight);
         osc2PitchLabel.setBounds(osc2PitchSlider.getX(), osc2PitchSlider.getBottom() + 5,
             osc2PitchSlider.getWidth(), labelHeight);
+        osc2FineLabel.setBounds(osc2FineSlider.getX(), osc2FineSlider.getBottom() + 5,
+            osc2FineSlider.getWidth(), labelHeight);
     }
 
     // 2. Фильтр и ADSR (нижняя часть)

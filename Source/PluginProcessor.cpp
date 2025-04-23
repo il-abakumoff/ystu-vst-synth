@@ -47,11 +47,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc1Pitch", "Oscillator 1 Pitch",
-        juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+        juce::NormalisableRange<float>(-36.0f, 36.0f, 1.0f), 0.0f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc2Pitch", "Oscillator 2 Pitch",
-        juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+        juce::NormalisableRange<float>(-36.0f, 36.0f, 1.0f), 0.0f));    
+    
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "osc1Fine", "Oscillator 1 Fine",
+        juce::NormalisableRange<float>(-100.0f, 100.0f, 1.0f), 0.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "osc2Fine", "Oscillator 2 Fine",
+        juce::NormalisableRange<float>(-100.0f, 100.0f, 1.0f), 0.0f));
 
     // Amp ADSR params
     layout.add(std::make_unique<juce::AudioParameterFloat>(
@@ -73,7 +81,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     // FILTER
     layout.add(std::make_unique<juce::AudioParameterChoice>(
         "filterType", "Filter Type",
-        juce::StringArray{ "Low-pass", "High-pass" }, 0));
+        juce::StringArray{ "Low-pass", "High-pass", "Band-pass", "Notch" }, 0));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "filterCutoff", "Filter Cutoff",
@@ -205,8 +213,10 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     filterSpec.maximumBlockSize = samplesPerBlock;
     filterSpec.numChannels = getTotalNumOutputChannels();
 
-    filter.prepare(filterSpec);
-    filter.reset();
+    mainFilter.prepare({ sampleRate, (juce::uint32)samplesPerBlock, 2 });
+    notchFilter.prepare(filterSpec);
+    *notchFilter.state = *juce::dsp::IIR::Coefficients<float>::makeNotch(
+        sampleRate, 1000.0f, 0.707f);
 
     // Начальные параметры
     updateFilterParameters(1000.0f, 0.7f, 0);
@@ -240,8 +250,10 @@ bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
 
 void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    // 1. Очистка буфера
     buffer.clear();
 
+    // 2. Обновление параметров ADSR
     float attack = apvts.getRawParameterValue("attack")->load();
     float decay = apvts.getRawParameterValue("decay")->load();
     float sustain = apvts.getRawParameterValue("sustain")->load();
@@ -254,34 +266,30 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         apvts.getRawParameterValue("modRelease")->load()
     );
 
+    // 3. Обновление параметров осцилляторов и применение к голосам
     for (int i = 0; i < synth.getNumVoices(); ++i)
     {
         if (auto* voice = dynamic_cast<WavetableVoice*>(synth.getVoice(i)))
         {
-            // Обновляем параметры для ОСЦИЛЛЯТОРА 1
+            // Параметры осцилляторов
             float osc1Volume = apvts.getRawParameterValue("osc1Volume")->load();
             float osc1Pitch = apvts.getRawParameterValue("osc1Pitch")->load();
-
-            // Обновляем параметры для ОСЦИЛЛЯТОРА 2
+            float osc1Fine = apvts.getRawParameterValue("osc1Fine")->load();
             float osc2Volume = apvts.getRawParameterValue("osc2Volume")->load();
             float osc2Pitch = apvts.getRawParameterValue("osc2Pitch")->load();
+            float osc2Fine = apvts.getRawParameterValue("osc2Fine")->load();
 
-            // Устанавливаем параметры
             voice->setVolume(osc1Volume, osc2Volume);
-            voice->setPitch(osc1Pitch, osc2Pitch);
-            voice->setAdsrParameters(
-                apvts.getRawParameterValue("attack")->load(),
-                apvts.getRawParameterValue("decay")->load(),
-                apvts.getRawParameterValue("sustain")->load(),
-                apvts.getRawParameterValue("release")->load()
-            );
+            voice->setPitch(osc1Pitch, osc2Pitch, osc1Fine, osc2Fine);
+            voice->setAdsrParameters(attack, decay, sustain, release);
 
-            // Устанавливаем разные волновые таблицы для каждого осциллятора
+            // Установка волновых таблиц
             int osc1WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc1Wave")->load());
             int osc2WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc2Wave")->load());
 
             const std::vector<float>* table1 = nullptr;
             const std::vector<float>* table2 = nullptr;
+
             switch (osc1WaveIndex) {
             case 0: table1 = &sineTable; break;
             case 1: table1 = &sawTable; break;
@@ -295,24 +303,31 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             }
 
             voice->setWaveform1(table1);
-            voice->setWaveform2(table2); // Теперь разные таблицы
+            voice->setWaveform2(table2);
         }
     }
 
+    // 4. Генерация аудио синтезатором
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 
-    // Обновление параметров фильтра
+    // 5. Обновление параметров фильтра
     float cutoff = apvts.getRawParameterValue("filterCutoff")->load();
     float resonance = apvts.getRawParameterValue("filterResonance")->load();
-    int filterType = apvts.getRawParameterValue("filterType")->load();
+    currentFilterType = apvts.getRawParameterValue("filterType")->load();
 
-    // Обновляем параметры фильтра
-    updateFilterParameters(cutoff, resonance, filterType);
+    updateFilterParameters(cutoff, resonance, currentFilterType);
 
-    // Обработка фильтром
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
-    filter.process(context);
+
+    if (currentFilterType != 3) // LP/HP/BP
+    {
+        mainFilter.process(context);
+    }
+    else // Notch
+    {
+        notchFilter.process(context);
+    }
 }
 
 bool NewProjectAudioProcessor::hasEditor() const
@@ -374,17 +389,21 @@ void NewProjectAudioProcessor::setupSynth()
 
 void NewProjectAudioProcessor::updateFilterParameters(float cutoff, float resonance, int type)
 {
-    // Устанавливаем базовые параметры
-    filter.setCutoffFrequency(cutoff);
-    filter.setResonance(resonance);
-
-    // Настраиваем тип фильтра через параметры
-    switch (type) {
-    case 0: // Low-pass
-        filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-        break;
-    case 1: // High-pass
-        filter.setType(juce::dsp::StateVariableTPTFilterType::highpass);
-        break;
+    currentFilterType = type;
+    
+    if (type != 3) { // LP/HP/BP
+        mainFilter.setCutoffFrequency(cutoff);
+        mainFilter.setResonance(resonance);
+        
+        switch (type) {
+            case 0: mainFilter.setType(juce::dsp::StateVariableTPTFilterType::lowpass); break;
+            case 1: mainFilter.setType(juce::dsp::StateVariableTPTFilterType::highpass); break;
+            case 2: mainFilter.setType(juce::dsp::StateVariableTPTFilterType::bandpass); break;
+        }
+    }
+    else // Notch
+    {
+        *notchFilter.state = *juce::dsp::IIR::Coefficients<float>::makeNotch(
+            filterSpec.sampleRate, cutoff, resonance);
     }
 }

@@ -23,23 +23,29 @@ private:
         juce::ComboBox osc1WaveSelector;
         juce::Slider osc1VolumeSlider;
         juce::Slider osc1PitchSlider;
+        juce::Slider osc1FineSlider;
         juce::Label osc1VolumeLabel;
         juce::Label osc1PitchLabel;
+        juce::Label osc1FineLabel;
 
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> osc1WaveAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc1VolumeAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc1PitchAttachment;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc1FineAttachment;
 
         // Осциллятор 2
         juce::ComboBox osc2WaveSelector;
         juce::Slider osc2VolumeSlider;
         juce::Slider osc2PitchSlider;
+        juce::Slider osc2FineSlider;
         juce::Label osc2VolumeLabel;
         juce::Label osc2PitchLabel;
+        juce::Label osc2FineLabel;
 
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> osc2WaveAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc2VolumeAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc2PitchAttachment;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc2FineAttachment;
 
         // ADSR 1
         juce::Slider attackSlider1;

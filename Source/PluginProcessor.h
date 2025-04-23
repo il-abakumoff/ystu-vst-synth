@@ -21,11 +21,9 @@ public:
 
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
-    //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
 
-    //==============================================================================
     const juce::String getName() const override;
 
     bool acceptsMidi() const override;
@@ -33,18 +31,22 @@ public:
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
 
-    //==============================================================================
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram (int index) override;
     const juce::String getProgramName (int index) override;
     void changeProgramName (int index, const juce::String& newName) override;
 
-    //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Голоса и осцилляторы
+    enum FilterType {
+        LowPass = 0,
+        HighPass = 1,
+        BandPass = 2,
+        Notch = 3
+    };
+
     static constexpr int kMaxVoices = 24; // Максимальное число голосов
     juce::Synthesiser synth;             // Основной синтезатор JUCE
 
@@ -55,9 +57,10 @@ public:
     juce::AudioParameterFloat* osc1VolumeParam;
     juce::AudioParameterFloat* osc2VolumeParam;
     juce::AudioParameterFloat* osc1PitchParam;
-    juce::AudioParameterFloat* osc2PitchParam;
+    juce::AudioParameterFloat* osc2PitchParam;    
+    juce::AudioParameterFloat* osc1FineParam;
+    juce::AudioParameterFloat* osc2FineParam;
     
-    // Wavetable данные
     std::vector<float> sineTable;       // Таблица синуса
     std::vector<float> sawTable;        // Таблица "супер пилы"
     std::vector<float> squareTable;     // Таблица квадрата
@@ -89,8 +92,13 @@ private:
     juce::AudioProcessorValueTreeState apvts;
     juce::AudioProcessorValueTreeState::ParameterLayout createParameters();
 
-    juce::dsp::StateVariableTPTFilter<float> filter;
+    juce::dsp::StateVariableTPTFilter<float> mainFilter;
+    juce::dsp::ProcessorDuplicator<
+        juce::dsp::IIR::Filter<float>,
+        juce::dsp::IIR::Coefficients<float>> notchFilter;
+    
     juce::dsp::ProcessSpec filterSpec;
-
+    int currentFilterType = 0;
+    
     CustomEnvelope modEnvelope;
 };

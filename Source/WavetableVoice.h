@@ -22,9 +22,9 @@ public:
         level2 = vol2;
     }
 
-    void setPitch(float pitch1, float pitch2) {
-        pitchSemitones1 = pitch1;
-        pitchSemitones2 = pitch2;
+    void setPitch(float pitch1, float pitch2, float fine1, float fine2) {
+        pitchSemitones1 = pitch1 + fine1 / 100;
+        pitchSemitones2 = pitch2 + fine2 / 100;
     }
 
     void setSampleRate(double sampleRate) { envelope.setSampleRate(sampleRate); }
