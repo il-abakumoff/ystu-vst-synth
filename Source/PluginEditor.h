@@ -115,5 +115,24 @@ private:
 
     std::unique_ptr<CustomLookAndFeel> customLookAndFeel;
 
+    struct FilterResponseDisplay : public juce::Component,
+        public juce::Timer
+    {
+        FilterResponseDisplay(NewProjectAudioProcessor&);
+        ~FilterResponseDisplay() override;
+
+        void paint(juce::Graphics&) override;
+        void timerCallback() override;
+
+        void updateResponse();
+
+        NewProjectAudioProcessor& processor;
+        juce::Path responsePath;
+        std::vector<float> magnitudes;
+        bool shouldUpdate = true;
+    };
+
+    std::unique_ptr<FilterResponseDisplay> filterDisplay;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NewProjectAudioProcessorEditor)
 };

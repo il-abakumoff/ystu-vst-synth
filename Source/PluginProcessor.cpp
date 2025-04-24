@@ -5,6 +5,8 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_core/juce_core.h>
+#include <math.h>
+
 
 NewProjectAudioProcessor::NewProjectAudioProcessor()
     : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
@@ -388,9 +390,7 @@ void NewProjectAudioProcessor::setupSynth()
 }
 
 void NewProjectAudioProcessor::updateFilterParameters(float cutoff, float resonance, int type)
-{
-    currentFilterType = type;
-    
+{ 
     if (type != 3) { // LP/HP/BP
         mainFilter.setCutoffFrequency(cutoff);
         mainFilter.setResonance(resonance);

@@ -5,6 +5,7 @@
 CustomLookAndFeel::CustomLookAndFeel()
 {
     setColourScheme(getMidnightColourScheme());
+    //setColourScheme(getLightColourScheme());
     setDefaultSansSerifTypefaceName("Arial");
 }
 

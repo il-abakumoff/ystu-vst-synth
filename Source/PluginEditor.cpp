@@ -2,6 +2,8 @@
 #include "PluginEditor.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 #include "CustomLookAndFeel.h"
+#include <juce_gui_extra/juce_gui_extra.h>
+#include <JuceHeader.h>
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioProcessor& p)
     : AudioProcessorEditor(&p),
@@ -17,12 +19,16 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioPr
     setupMainPanel();
     setupMatrixPanel();
 
-    tabs.addTab("Main", juce::Colours::lightgrey, mainPanel.get(), false);
-    tabs.addTab("Matrix", juce::Colours::lightgrey, matrixPanel.get(), false);
+    tabs.addTab("Main", juce::Colours::transparentBlack, mainPanel.get(), false);
+    tabs.addTab("Matrix", juce::Colours::transparentBlack, matrixPanel.get(), false);
+ 
 
     addAndMakeVisible(tabs);
 
-    setSize(800, 600);
+    filterDisplay = std::make_unique<FilterResponseDisplay>(audioProcessor);
+    addAndMakeVisible(filterDisplay.get());
+
+    setSize(800, 650);
 }
 
 void NewProjectAudioProcessorEditor::setupMainPanel()
@@ -257,6 +263,14 @@ void NewProjectAudioProcessorEditor::setupMainPanel()
         mainPanel->filterResonanceLabel.attachToComponent(&mainPanel->filterResonanceSlider, false);
         mainPanel->filterResonanceLabel.setJustificationType(juce::Justification::centred);
     }
+
+    // FILTER VISUALISATION
+    {
+        auto callback = [this]() { filterDisplay->shouldUpdate = true; };
+        mainPanel->filterCutoffSlider.onValueChange = callback;
+        mainPanel->filterResonanceSlider.onValueChange = callback;
+        mainPanel->filterTypeSelector.onChange = [this] { filterDisplay->shouldUpdate = true; };
+    }
 }
 
 void NewProjectAudioProcessorEditor::setupMatrixPanel()
@@ -328,10 +342,6 @@ void NewProjectAudioProcessorEditor::paint(juce::Graphics& g)
             juce::Justification::centred, false);
 
         auto bottomArea = mainPanel->getLocalBounds().removeFromBottom(160);
-        g.drawText("FILTER", bottomArea.removeFromLeft(bottomArea.getWidth() / 2).removeFromTop(20),
-            juce::Justification::centred, false);
-        g.drawText("ADSR ENVELOPES", bottomArea.removeFromTop(20),
-            juce::Justification::centred, false);
     }
     else if (tabs.getCurrentTabIndex() == 1)
     {
@@ -345,6 +355,10 @@ void NewProjectAudioProcessorEditor::paint(juce::Graphics& g)
 void NewProjectAudioProcessorEditor::resized()
 {
     tabs.setBounds(getLocalBounds());
+
+    auto area = getLocalBounds();
+    filterDisplay->setBounds(area.removeFromBottom(150).reduced(10));
+    tabs.setBounds(area);
 }
 
 void NewProjectAudioProcessorEditor::MainPanel::resized()
@@ -405,10 +419,12 @@ void NewProjectAudioProcessorEditor::MainPanel::resized()
         auto filterResonanceArea = filterSliderArea;
 
         filterCutoffSlider.setBounds(filterCutoffArea.removeFromTop(150));
-        filterCutoffLabel.setBounds(filterCutoffArea.removeFromTop(labelHeight));
+        filterCutoffLabel.setBounds(filterCutoffSlider.getX(), filterCutoffSlider.getBottom() + 5,
+            filterCutoffSlider.getWidth(), labelHeight);
 
         filterResonanceSlider.setBounds(filterResonanceArea.removeFromTop(150));
-        filterResonanceLabel.setBounds(filterResonanceArea.removeFromTop(labelHeight));
+        filterResonanceLabel.setBounds(filterResonanceSlider.getX(), filterResonanceSlider.getBottom() + 5,
+            filterResonanceSlider.getWidth(), labelHeight);
 
         // Правая часть - ADSR
         auto adsrArea = bottomArea;
@@ -488,8 +504,214 @@ void NewProjectAudioProcessorEditor::MatrixPanel::resized()
     }
 }
 
-
 NewProjectAudioProcessorEditor::~NewProjectAudioProcessorEditor()
 {
     setLookAndFeel(nullptr);
+}
+
+NewProjectAudioProcessorEditor::FilterResponseDisplay::FilterResponseDisplay(NewProjectAudioProcessor& p)
+    : processor(p)
+{
+    startTimerHz(30); // Обновление 30 раз в секунду
+    magnitudes.resize(300); // Разрешение графика
+    setOpaque(false);
+}
+
+NewProjectAudioProcessorEditor::FilterResponseDisplay::~FilterResponseDisplay()
+{
+    stopTimer();
+}
+
+void NewProjectAudioProcessorEditor::FilterResponseDisplay::paint(juce::Graphics& g)
+{
+    // Фон с градиентом для лучшего восприятия
+    g.setGradientFill(juce::ColourGradient(
+        juce::Colours::darkgrey.withAlpha(0.3f), 0.0f, 0.0f,
+        juce::Colours::black.withAlpha(0.6f), 0.0f, static_cast<float>(getHeight()), false));
+    g.fillAll();
+
+    // Сетка
+    g.setColour(juce::Colours::white.withAlpha(0.15f));
+
+    // Вертикальные линии (логарифмические)
+    float freqs[] = { 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
+    float logMin = std::log10(20.0f);
+    float logMax = std::log10(20000.0f);
+    float logRange = logMax - logMin;
+
+    for (float freq : freqs) {
+        float x = getWidth() * (std::log10(freq) - logMin) / logRange;
+        g.drawVerticalLine(static_cast<int>(x), 0, getHeight());
+
+        // Подписи частот
+        juce::String freqText = freq >= 1000 ? juce::String(freq / 1000.0, 1) + "k" : juce::String(freq);
+        g.drawText(freqText, x - 20, getHeight() - 20, 40, 20, juce::Justification::centred);
+    }
+
+    // Горизонтальные линии (dB)
+    for (int dB = -60; dB <= 24; dB += 6) {
+        float y = juce::jmap(static_cast<float>(dB), -60.0f, 24.0f,
+            static_cast<float>(getHeight()), 0.0f);
+        g.drawHorizontalLine(static_cast<int>(y), 0, getWidth());
+        g.drawText(juce::String(dB), 5, y - 10, 30, 20, juce::Justification::left);
+    }
+
+    // График АЧХ с обводкой для лучшей видимости
+    g.setColour(juce::Colours::cyan.withAlpha(0.8f));
+    g.strokePath(responsePath, juce::PathStrokeType(3.0f));
+    g.setColour(juce::Colours::cyan);
+    g.strokePath(responsePath, juce::PathStrokeType(1.5f));
+
+    // Линия частоты среза
+    auto cutoff = processor.getAPVTS().getRawParameterValue("filterCutoff")->load();
+    float cutoffX = getWidth() * (std::log10(cutoff) - logMin) / logRange;
+    g.setColour(juce::Colours::red.withAlpha(0.7f));
+    g.drawVerticalLine(static_cast<int>(cutoffX), 0, getHeight());
+}
+
+void NewProjectAudioProcessorEditor::FilterResponseDisplay::timerCallback()
+{
+    if (shouldUpdate)
+    {
+        updateResponse();
+        shouldUpdate = false;
+        repaint();
+    }
+}
+
+void NewProjectAudioProcessorEditor::FilterResponseDisplay::updateResponse()
+{
+    constexpr double sampleRate = 44100.0;
+    constexpr int numPoints = 800;
+    constexpr float minFreq = 20.0f;
+    constexpr float maxFreq = 20000.0f;
+
+    auto cutoff = processor.getAPVTS().getRawParameterValue("filterCutoff")->load();
+    auto resonance = processor.getAPVTS().getRawParameterValue("filterResonance")->load();
+    auto type = static_cast<int>(processor.getAPVTS().getRawParameterValue("filterType")->load());
+
+    responsePath.clear();
+    const float width = static_cast<float>(getWidth());
+    const float height = static_cast<float>(getHeight());
+    bool firstPoint = true;
+
+    const float logMin = std::log10(minFreq);
+    const float logMax = std::log10(maxFreq);
+    const float logRange = logMax - logMin;
+
+    // Общие параметры для всех фильтров
+    const float peakGain = resonance * 18.0f;
+    const float peakWidthCoef = 0.7f / (resonance + 0.3f);
+
+    for (int i = 0; i < numPoints; ++i)
+    {
+        const float t = i / static_cast<float>(numPoints - 1);
+        const float freq = std::pow(10.0f, logMin + t * logRange);
+        const float x = width * (std::log10(freq) - logMin) / logRange;
+
+        float dB = 0.0f;
+
+        switch (type)
+        {
+        case 0: // Low-pass
+        {
+            if (freq > cutoff)
+            {
+                const float octaves = std::log2(freq / cutoff);
+                dB = -12.0f * octaves;
+            }
+
+            if (resonance > 0.01f)
+            {
+                const float distFromPeak = freq - cutoff;
+                const float peakWidth = cutoff * peakWidthCoef;
+                dB += peakGain * std::exp(-(distFromPeak * distFromPeak) / (2.0f * peakWidth * peakWidth));
+            }
+            break;
+        }
+
+        case 1: // High-pass
+        {
+            if (freq < cutoff)
+            {
+                const float octaves = std::log2(cutoff / freq);
+                dB = -12.0f * octaves;
+            }
+
+            if (resonance > 0.01f)
+            {
+                const float distFromPeak = freq - cutoff;
+                const float peakWidth = cutoff * peakWidthCoef;
+                dB += peakGain * std::exp(-(distFromPeak * distFromPeak) / (2.0f * peakWidth * peakWidth));
+            }
+            break;
+        }
+
+        case 2: // Band-pass
+        {
+            const float centerFreq = cutoff;
+            // Более плавная зависимость ширины полосы от резонанса
+            const float bandwidth = centerFreq * (.5f + 1.5f * (1.0f - resonance));
+            const float normalizedFreq = freq / centerFreq;
+            const float logNormFreq = std::log2(normalizedFreq);
+
+            // Основной спад - более плавный
+            dB = -24.0f * std::abs(logNormFreq);
+
+            // Резонансный пик - более выраженный и симметричный
+            if (resonance > 0.1f)
+            {
+                const float peakGain = 18.0f * resonance; // Усиление пика
+                const float peakWidth = 0.5f / (resonance + 0.2f); // Ширина пика
+
+                // Гауссов колокол в логарифмической шкале
+                dB += peakGain * std::exp(-(logNormFreq * logNormFreq) /
+                    (2.0f * peakWidth * peakWidth));
+            }
+
+            // Коррекция для симметричности
+            if (freq < centerFreq) {
+                dB *= 0.9f + 0.1f * resonance; // Компенсация асимметрии
+            }
+            break;
+        }
+
+        case 3: // Notch filter (с регулируемой глубиной)
+        {
+            const float centerFreq = cutoff;
+            const float normalizedResonance = (resonance - 0.1f) / 1.9f; // Приводим 0.1-2.0 -  0.0-1.0
+
+            // Преобразуем резонанс в Q-фактор с нелинейной зависимостью
+            const float qFactor = 0.2f + 1.0f * normalizedResonance * normalizedResonance;
+
+            // Глубина провала (0 при resonance=2.0, -60 при resonance=0.1)
+            const float depth = -60.0f * (1.0f - normalizedResonance);
+
+            // Логарифмическое отклонение от центральной частоты
+            const float logOffset = std::log2(freq / centerFreq);
+
+            // Форма провала
+            const float bellShape = std::exp(-(logOffset * logOffset) * qFactor * 3.0f);
+
+            // Итоговое значение
+            dB = depth * bellShape;
+
+            // Ограничения и защита
+            dB = juce::jlimit(-60.0f, 6.0f, dB);
+            break;
+        }
+        }
+
+        const float y = juce::jmap(juce::jlimit(-60.0f, 24.0f, dB), -60.0f, 24.0f, height, 0.0f);
+
+        if (firstPoint)
+        {
+            responsePath.startNewSubPath(x, y);
+            firstPoint = false;
+        }
+        else
+        {
+            responsePath.lineTo(x, y);
+        }
+    }
 }

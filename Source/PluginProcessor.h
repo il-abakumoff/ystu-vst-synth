@@ -81,6 +81,13 @@ public:
     juce::AudioParameterFloat* modSustainParam;
     juce::AudioParameterFloat* modReleaseParam;
 
+    auto getNotchFilterState() {
+        return notchFilter.state;
+    }    
+    auto getFilterSpec() {
+        return filterSpec;
+    }
+
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessor)
 
