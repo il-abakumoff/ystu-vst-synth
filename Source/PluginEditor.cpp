@@ -4,13 +4,18 @@
 #include "CustomLookAndFeel.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <JuceHeader.h>
+#include "GlobalSettings.h"
+#include "SettingsTab.h"
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioProcessor& p)
     : AudioProcessorEditor(&p),
     audioProcessor(p),
     tabs(juce::TabbedButtonBar::TabsAtTop),
-    customLookAndFeel(std::make_unique<CustomLookAndFeel>())
+    customLookAndFeel(std::make_unique<CustomLookAndFeel>()),
+    settingsTab(std::make_unique<SettingsTab>(p)) // Инициализация здесь
 {
+    auto& settings = GlobalSettings::getInstance();
+
     setLookAndFeel(customLookAndFeel.get());
 
     mainPanel = std::make_unique<MainPanel>();
@@ -21,7 +26,7 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioPr
 
     tabs.addTab("Main", juce::Colours::transparentBlack, mainPanel.get(), false);
     tabs.addTab("Matrix", juce::Colours::transparentBlack, matrixPanel.get(), false);
- 
+    tabs.addTab("Settings", juce::Colours::transparentBlack, settingsTab.get(), false);
 
     addAndMakeVisible(tabs);
 
@@ -715,3 +720,4 @@ void NewProjectAudioProcessorEditor::FilterResponseDisplay::updateResponse()
         }
     }
 }
+

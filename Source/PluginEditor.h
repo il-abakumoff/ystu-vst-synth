@@ -4,6 +4,8 @@
 #include "PluginProcessor.h"
 #include "CustomLookAndFeel.h"
 
+class SettingsTab;
+
 class NewProjectAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 public:
@@ -109,6 +111,8 @@ private:
         void resized() override;
     };
     std::unique_ptr<MatrixPanel> matrixPanel;
+
+    std::unique_ptr<SettingsTab> settingsTab;
 
     void setupMainPanel();
     void setupMatrixPanel();
