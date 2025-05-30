@@ -57,6 +57,9 @@ void GlobalSettings::loadSettings()
 
     if (auto* linuxPath = xml->getChildByName("LinuxPresetPath"))
         linuxPresetPath = linuxPath->getStringAttribute("path");
+
+    if (auto* theme = xml->getChildByName("Theme"))
+        themeId = theme->getIntAttribute("id", 1); // 1 Ч Midnight по умолчанию
 }
 
 void GlobalSettings::saveSettings()
@@ -79,6 +82,9 @@ void GlobalSettings::saveSettings()
 
     auto* linuxElement = xml->createNewChildElement("LinuxPresetPath");
     linuxElement->setAttribute("path", linuxPresetPath);
+
+    auto* themeElement = xml->createNewChildElement("Theme");
+    themeElement->setAttribute("id", themeId);
 
     if (!xml->writeTo(tempFile)) return;
     tempFile.moveFileTo(file);
@@ -110,4 +116,17 @@ void GlobalSettings::setPresetPathForCurrentOS(const juce::String& path)
 #endif
 
     saveSettings();
+}
+
+void GlobalSettings::setThemeId(int id)
+{
+    const juce::ScopedLock sl(lock);
+    themeId = id;
+    saveSettings();
+}
+
+int GlobalSettings::getThemeId() const
+{
+    const juce::ScopedLock sl(lock);
+    return themeId;
 }

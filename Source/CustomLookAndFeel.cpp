@@ -5,7 +5,6 @@
 CustomLookAndFeel::CustomLookAndFeel()
 {
     setColourScheme(getMidnightColourScheme());
-    //setColourScheme(getLightColourScheme());
     setDefaultSansSerifTypefaceName("Arial");
 }
 
@@ -37,4 +36,29 @@ void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
     p.applyTransform(juce::AffineTransform::rotation(angle).translated(centreX, centreY));
     g.setColour(juce::Colours::white);
     g.fillPath(p);
+}
+
+void CustomLookAndFeel::applyThemeColours()
+{
+    auto bg = findColour(juce::ResizableWindow::backgroundColourId);
+    auto fg = findColour(juce::Label::textColourId); // можно базироваться на цвете схемы
+
+    setColour(juce::TabbedButtonBar::tabTextColourId, fg);
+    setColour(juce::TabbedButtonBar::frontTextColourId, fg.brighter(0.3f));
+
+    setColour(juce::TextEditor::textColourId, fg);
+    setColour(juce::TextEditor::backgroundColourId, bg.darker(0.3f));
+
+    setColour(juce::ComboBox::textColourId, fg);
+    setColour(juce::Label::textColourId, fg);
+}
+
+void CustomLookAndFeel::setTheme(int themeId)
+{
+    if (themeId == 1)
+        setColourScheme(getMidnightColourScheme());
+    else
+        setColourScheme(juce::LookAndFeel_V4::getLightColourScheme());
+
+    applyThemeColours();
 }

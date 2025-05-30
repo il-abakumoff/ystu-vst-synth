@@ -13,6 +13,9 @@ public:
     juce::String getPresetPathForCurrentOS() const;
     void setPresetPathForCurrentOS(const juce::String& path);
 
+    void setThemeId(int id);
+    int getThemeId() const;
+
 private:
     GlobalSettings();
     ~GlobalSettings() = default;
@@ -27,4 +30,6 @@ private:
     juce::String winPresetPath;
     juce::String macPresetPath;
     juce::String linuxPresetPath;
+
+    int themeId = 1; // 1 = Midnight, 2 = Light
 };

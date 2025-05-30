@@ -16,12 +16,25 @@ SettingsTab::SettingsTab(NewProjectAudioProcessor& p)
     addAndMakeVisible(browseButton);
     browseButton.setWantsKeyboardFocus(true);
 
+    themeLabel.setText("Color Scheme:", juce::dontSendNotification);
+    addAndMakeVisible(themeLabel);
+
+    themeSelector.addItem("Midnight", 1);
+    themeSelector.addItem("Light", 2);
+    themeSelector.onChange = [this] {
+        if (onThemeChanged)
+            onThemeChanged(themeSelector.getSelectedId());
+        };
+    themeSelector.setSelectedId(1); // По умолчанию Midnight
+    addAndMakeVisible(themeSelector);
+
+
     updatePathDisplay();
 }
 
 SettingsTab::~SettingsTab()
 {
-    fileChooser.reset(); // Важно для корректного удаления
+    fileChooser.reset();
 }
 
 void SettingsTab::resized()
@@ -34,6 +47,18 @@ void SettingsTab::resized()
 
     bounds.removeFromTop(5);
     pathDisplay.setBounds(bounds.removeFromTop(25));
+
+    bounds.removeFromTop(20);
+    themeLabel.setBounds(bounds.removeFromTop(25).removeFromLeft(150));
+    themeSelector.setSelectedId(GlobalSettings::getInstance().getThemeId());
+    themeSelector.setBounds(bounds.removeFromTop(25).removeFromLeft(150));
+    themeSelector.onChange = [this] {
+        int selectedId = themeSelector.getSelectedId();
+        GlobalSettings::getInstance().setThemeId(selectedId);
+        if (onThemeChanged)
+            onThemeChanged(selectedId);
+        };
+
 }
 
 void SettingsTab::updatePathDisplay()
@@ -44,30 +69,24 @@ void SettingsTab::updatePathDisplay()
 
 void SettingsTab::browseForPresetPath()
 {
-    // 1. Сохраняем unique_ptr как член класса
     fileChooser = std::make_unique<juce::FileChooser>(
         "Select Presets Folder",
         juce::File(GlobalSettings::getInstance().getPresetPathForCurrentOS()),
         "*"
     );
 
-    // 2. Захватываем raw pointer для колбэка
     auto* chooserPtr = fileChooser.get();
 
-    // 3. Запускаем диалог
     chooserPtr->launchAsync(juce::FileBrowserComponent::openMode |
         juce::FileBrowserComponent::canSelectDirectories,
         [this, chooserPtr](const juce::FileChooser& chooser)
         {
-            // 4. Обработка результата
             auto result = chooser.getResult();
             if (result.exists())
             {
                 GlobalSettings::getInstance().setPresetPathForCurrentOS(result.getFullPathName());
                 updatePathDisplay();
             }
-
-            // 5. Явно освобождаем ресурсы
             fileChooser.reset();
         });
 }

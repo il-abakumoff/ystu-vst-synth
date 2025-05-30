@@ -47,7 +47,7 @@ public:
         Notch = 3
     };
 
-    static constexpr int kMaxVoices = 24; // Максимальное число голосов
+    static constexpr int kMaxVoices = 12; // Максимальное число голосов
     juce::Synthesiser synth;             // Основной синтезатор JUCE
 
     // Параметры плагина (DAW, Automation)

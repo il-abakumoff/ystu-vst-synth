@@ -34,6 +34,18 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioPr
     addAndMakeVisible(filterDisplay.get());
 
     setSize(800, 650);
+
+    int savedTheme = GlobalSettings::getInstance().getThemeId();
+    if (savedTheme == 1)
+        customLookAndFeel->setColourScheme(juce::LookAndFeel_V4::getMidnightColourScheme());
+    else
+        customLookAndFeel->setColourScheme(juce::LookAndFeel_V4::getLightColourScheme());
+
+    settingsTab->onThemeChanged = [this](int themeId) {
+        customLookAndFeel->setTheme(themeId);
+        lookAndFeelChanged();
+        repaint();
+        };
 }
 
 void NewProjectAudioProcessorEditor::setupMainPanel()

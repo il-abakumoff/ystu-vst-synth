@@ -9,12 +9,18 @@ public:
     ~SettingsTab() override;
     void resized() override;
 
+    std::function<void(int)> onThemeChanged; // Callback
+
 private:
     NewProjectAudioProcessor& processor;
     juce::Label pathLabel;
     juce::TextEditor pathDisplay;
     juce::TextButton browseButton;    
     juce::TextButton testButton;
+
+    juce::Label themeLabel;
+    juce::ComboBox themeSelector;
+
 
     void updatePathDisplay();
     void browseForPresetPath();

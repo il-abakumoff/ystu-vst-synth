@@ -6,6 +6,9 @@ class CustomLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
     CustomLookAndFeel();
+    void applyThemeColours();
+
+    void setTheme(int themeId);
 
     void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
         float sliderPos, float rotaryStartAngle, float rotaryEndAngle,
