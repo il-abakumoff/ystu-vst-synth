@@ -371,6 +371,30 @@ void NewProjectAudioProcessor::setStateInformation(const void* data, int sizeInB
     }
 }
 
+void NewProjectAudioProcessor::savePresetToFile(const juce::File& file)
+{
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+
+    if (xml)
+    {
+        xml->setTagName("STATE"); // важно для корректной загрузки!
+        xml->setAttribute("version", JucePlugin_VersionString);
+        xml->writeTo(file);
+    }
+}
+
+void NewProjectAudioProcessor::loadPresetFromFile(const juce::File& file)
+{
+    if (!file.existsAsFile()) return;
+
+    std::unique_ptr<juce::XmlElement> xml(juce::XmlDocument::parse(file));
+    if (xml && xml->hasTagName("STATE"))
+    {
+        apvts.replaceState(juce::ValueTree::fromXml(*xml));
+    }
+}
+
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new NewProjectAudioProcessor();

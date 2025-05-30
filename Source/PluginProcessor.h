@@ -40,6 +40,9 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    void savePresetToFile(const juce::File& file);
+    void loadPresetFromFile(const juce::File& file);
+
     enum FilterType {
         LowPass = 0,
         HighPass = 1,

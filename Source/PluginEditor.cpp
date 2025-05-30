@@ -50,6 +50,47 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioPr
 
 void NewProjectAudioProcessorEditor::setupMainPanel()
 {
+    // PRESET FIELDS
+    {
+        mainPanel->addAndMakeVisible(mainPanel->presetLabel);
+        mainPanel->presetLabel.setText("No preset loaded", juce::dontSendNotification);
+        mainPanel->presetLabel.setJustificationType(juce::Justification::centredLeft);
+
+        mainPanel->addAndMakeVisible(mainPanel->loadButton);
+        mainPanel->loadButton.onClick = [this] {
+            auto presetPath = GlobalSettings::getInstance().getPresetPathForCurrentOS();
+            mainPanel->fileChooser = std::make_unique<juce::FileChooser>(
+                "Load Preset", juce::File(presetPath), "*.ystusp");
+
+            mainPanel->fileChooser->launchAsync(juce::FileBrowserComponent::openMode,
+                [this](const juce::FileChooser& chooser) {
+                    auto file = chooser.getResult();
+                    if (file.existsAsFile()) {
+                        audioProcessor.loadPresetFromFile(file);
+                        mainPanel->presetLabel.setText(file.getFileName(), juce::dontSendNotification);
+                    }
+                    mainPanel->fileChooser.reset();
+                });
+            };
+
+        mainPanel->addAndMakeVisible(mainPanel->saveButton);
+        mainPanel->saveButton.onClick = [this] {
+            auto presetPath = GlobalSettings::getInstance().getPresetPathForCurrentOS();
+            mainPanel->fileChooser = std::make_unique<juce::FileChooser>(
+                "Save Preset As", juce::File(presetPath), "*.ystusp");
+
+            mainPanel->fileChooser->launchAsync(juce::FileBrowserComponent::saveMode,
+                [this](const juce::FileChooser& chooser) {
+                    auto file = chooser.getResult();
+                    if (file != juce::File{}) {
+                        file.withFileExtension(".ystusp");
+                        audioProcessor.savePresetToFile(file);
+                        mainPanel->presetLabel.setText(file.getFileName(), juce::dontSendNotification);
+                    }
+                    mainPanel->fileChooser.reset();
+                });
+            };
+    }
     // OSC 1
     {
         
@@ -384,6 +425,14 @@ void NewProjectAudioProcessorEditor::MainPanel::resized()
     const int margin = 10; // Общий отступ
     const int sliderHeight = 80; // Высота слайдеров
     const int labelHeight = 20; // Высота лейблов
+
+    auto presetArea = area.removeFromBottom(40);
+    auto buttonWidth = 80;
+    auto labelWidth = presetArea.getWidth() - 2 * buttonWidth - 30;
+
+    presetLabel.setBounds(presetArea.removeFromLeft(labelWidth));
+    loadButton.setBounds(presetArea.removeFromLeft(buttonWidth).reduced(5));
+    saveButton.setBounds(presetArea.removeFromLeft(buttonWidth).reduced(5));
 
     // 1. Осцилляторы (верхняя часть)
     auto oscArea = area.removeFromTop(200);

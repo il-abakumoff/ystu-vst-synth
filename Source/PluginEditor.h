@@ -21,6 +21,12 @@ private:
 
     struct MainPanel : public juce::Component
     {
+        // пресеты
+        juce::Label presetLabel;
+        juce::TextButton loadButton{ "Load" };
+        juce::TextButton saveButton{ "Save" };
+        std::unique_ptr<juce::FileChooser> fileChooser;
+
         // Осциллятор 1
         juce::ComboBox osc1WaveSelector;
         juce::Slider osc1VolumeSlider;
