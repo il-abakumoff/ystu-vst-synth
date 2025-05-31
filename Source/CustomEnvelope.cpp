@@ -27,7 +27,7 @@ void CustomEnvelope::noteOff()
 {
     if (state != Idle && state != Release)
     {
-        releaseStartValue = currentValue; // Ñîõðàíÿåì òåêóùåå çíà÷åíèå
+        releaseStartValue = currentValue; // Ã‘Ã®ÃµÃ°Ã Ã­Ã¿Ã¥Ã¬ Ã²Ã¥ÃªÃ³Ã¹Ã¥Ã¥ Ã§Ã­Ã Ã·Ã¥Ã­Ã¨Ã¥
         state = Release;
         samplesProcessed = 0;
     }
@@ -94,7 +94,7 @@ float CustomEnvelope::getNextValue()
 
         float releaseSamples = releaseTime * sampleRate;
         float t = samplesProcessed / releaseSamples;
-        currentValue = releaseStartValue * (1.0f - t); // Çàòóõàåì îò òåêóùåãî çíà÷åíèÿ
+        currentValue = releaseStartValue * (1.0f - t); // Ã‡Ã Ã²Ã³ÃµÃ Ã¥Ã¬ Ã®Ã² Ã²Ã¥ÃªÃ³Ã¹Ã¥Ã£Ã® Ã§Ã­Ã Ã·Ã¥Ã­Ã¨Ã¿
 
         if (t >= 1.0f)
         {

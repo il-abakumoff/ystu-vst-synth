@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "CustomLookAndFeel.h"
+#include "EffectsTab.h"
 
 class SettingsTab;
 
@@ -99,8 +100,6 @@ private:
 
         void resized() override;
     };
-    std::unique_ptr<MainPanel> mainPanel;
-
     struct MatrixPanel : public juce::Component
     {
         struct ModulationRow
@@ -116,15 +115,6 @@ private:
 
         void resized() override;
     };
-    std::unique_ptr<MatrixPanel> matrixPanel;
-
-    std::unique_ptr<SettingsTab> settingsTab;
-
-    void setupMainPanel();
-    void setupMatrixPanel();
-
-    std::unique_ptr<CustomLookAndFeel> customLookAndFeel;
-
     struct FilterResponseDisplay : public juce::Component,
         public juce::Timer
     {
@@ -142,6 +132,14 @@ private:
         bool shouldUpdate = true;
     };
 
+    void setupMainPanel();
+    void setupMatrixPanel();
+
+    std::unique_ptr<MainPanel> mainPanel;
+    std::unique_ptr<MatrixPanel> matrixPanel;
+    std::unique_ptr<SettingsTab> settingsTab;
+    std::unique_ptr<EffectsTab> effectsTab;
+    std::unique_ptr<CustomLookAndFeel> customLookAndFeel;
     std::unique_ptr<FilterResponseDisplay> filterDisplay;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NewProjectAudioProcessorEditor)

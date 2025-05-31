@@ -5,6 +5,7 @@
 #include "WavetableVoice.h"
 #include "SynthSound.h"
 #include <juce_dsp/juce_dsp.h> // Для DSP модулей
+#include "EffectTypes.h"
 
 class NewProjectAudioProcessor  : public juce::AudioProcessor
 {
@@ -49,6 +50,43 @@ public:
         BandPass = 2,
         Notch = 3
     };
+
+    struct EffectProcessor
+    {
+        EffectType type = EffectType::None;
+
+        // distortion
+        float distortionDrive = 1.0f;
+        float distortionMix = 1.0f; // 0 = dry, 1 = wet
+        float distortionTone = 20000.0f; // cutoff для LPF
+
+        juce::dsp::WaveShaper<float, std::function<float(float)>> distortion;
+        juce::dsp::ProcessorDuplicator<
+            juce::dsp::IIR::Filter<float>,
+            juce::dsp::IIR::Coefficients<float>
+        > toneFilterDry, toneFilterWet;
+
+        juce::dsp::Chorus<float> chorus;
+        float chorusMix = 0.5f;
+        
+        juce::dsp::Phaser<float> phaser;
+        float phaserMix = 0.5f;
+        
+        juce::dsp::Reverb reverb;
+        juce::dsp::Reverb::Parameters reverbParams;
+        float reverbMix = 0.5f;
+
+        juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delay{ 96000 };
+        juce::AudioBuffer<float> delayBuffer;        
+        float delayTimeMs = 300.0f;
+        float delayFeedback = 0.4f;
+        float delayMix = 0.5f;
+
+        void prepare(const juce::dsp::ProcessSpec& spec);
+        void process(juce::AudioBuffer<float>& buffer);
+    };
+
+    std::array<EffectProcessor, 3> effects;
 
     static constexpr int kMaxVoices = 12; // Максимальное число голосов
     juce::Synthesiser synth;             // Основной синтезатор JUCE

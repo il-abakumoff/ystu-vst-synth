@@ -6,13 +6,16 @@
 #include <JuceHeader.h>
 #include "GlobalSettings.h"
 #include "SettingsTab.h"
+#include "EffectsTab.h"
+
 
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioProcessor& p)
     : AudioProcessorEditor(&p),
     audioProcessor(p),
     tabs(juce::TabbedButtonBar::TabsAtTop),
     customLookAndFeel(std::make_unique<CustomLookAndFeel>()),
-    settingsTab(std::make_unique<SettingsTab>(p)) // Инициализация здесь
+    settingsTab(std::make_unique<SettingsTab>(p)),
+    effectsTab(std::make_unique<EffectsTab>())
 {
     auto& settings = GlobalSettings::getInstance();
 
@@ -20,6 +23,98 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioPr
 
     mainPanel = std::make_unique<MainPanel>();
     matrixPanel = std::make_unique<MatrixPanel>();
+    effectsTab = std::make_unique<EffectsTab>();
+    effectsTab->connectEffectCallbacks([this](int index, EffectType type) {
+        if (index >= 0 && index < static_cast<int>(audioProcessor.effects.size()))
+        {
+            audioProcessor.effects[index].type = type;
+        }
+        });
+
+    effectsTab->connectParameterCallbacks([this](int block, int param, float value) {
+        if (block >= 0 && block < static_cast<int>(audioProcessor.effects.size()))
+        {
+            auto& fx = audioProcessor.effects[block];
+            auto sampleRate = audioProcessor.getSampleRate();
+
+            switch (fx.type)
+            {
+            case EffectType::Distortion:
+            {
+                if (param == 0) fx.distortionDrive = value;
+                else if (param == 1)
+                {
+                    fx.distortionTone = value;
+                    DBG("Tone filter cutoff updated: " << value);
+                    auto sampleRate = audioProcessor.getSampleRate();
+                    auto coeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, value);
+                    *fx.toneFilterDry.state = *coeffs;
+                    *fx.toneFilterWet.state = *coeffs;
+
+                }
+                else if (param == 2) fx.distortionMix = value;
+                break;
+            }
+
+            case EffectType::Chorus:
+            {
+                if (param == 0) fx.chorus.setRate(value);   
+                else if (param == 1) fx.chorus.setDepth(value);
+                else if (param == 2) fx.chorusMix = value;  
+                break;
+            }
+
+            case EffectType::Phaser:
+            {
+                if (param == 0) fx.phaser.setRate(value);    
+                else if (param == 1) fx.phaser.setDepth(value);
+                else if (param == 2) fx.phaserMix = value;  
+                break;
+            }
+
+            case EffectType::Reverb:
+            {
+                if (param == 0)
+                {
+                    fx.reverbParams.roomSize = value;
+                }
+                else if (param == 1)
+                {
+                    fx.reverbParams.damping = value;
+                }
+                else if (param == 2)
+                {
+                    fx.reverbMix = value;
+                }
+
+                fx.reverbParams.wetLevel = 1.0f;
+                fx.reverbParams.dryLevel = 0.0f;
+                fx.reverb.setParameters(fx.reverbParams);
+                break;
+            }
+
+            case EffectType::Delay:
+            {
+                if (param == 0)
+                {
+                    fx.delayTimeMs = value;
+                    fx.delay.setDelay(value);
+                }
+                else if (param == 1)
+                {
+                    fx.delayFeedback = value;
+                }
+                else if (param == 2)
+                {
+                    fx.delayMix = value;
+                }
+                break;
+            }
+            
+            default: break;
+            }
+        }
+        });
 
     setupMainPanel();
     setupMatrixPanel();
@@ -27,6 +122,7 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioPr
     tabs.addTab("Main", juce::Colours::transparentBlack, mainPanel.get(), false);
     tabs.addTab("Matrix", juce::Colours::transparentBlack, matrixPanel.get(), false);
     tabs.addTab("Settings", juce::Colours::transparentBlack, settingsTab.get(), false);
+    tabs.addTab("Effects", juce::Colours::transparentBlack, effectsTab.get(), false);
 
     addAndMakeVisible(tabs);
 
@@ -91,6 +187,7 @@ void NewProjectAudioProcessorEditor::setupMainPanel()
                 });
             };
     }
+
     // OSC 1
     {
         

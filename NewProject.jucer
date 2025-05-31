@@ -5,6 +5,16 @@
               pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="Fic8Cf" name="YSTU-Synth">
     <GROUP id="{F3FF0CAB-C257-0EC2-54F3-C1EFAA0CA188}" name="Source">
+      <FILE id="zbAgxZ" name="EffectTypes.cpp" compile="1" resource="0" file="Source/EffectTypes.cpp"/>
+      <FILE id="tfmaFZ" name="EffectTypes.h" compile="0" resource="0" file="Source/EffectTypes.h"/>
+      <FILE id="YMs7rI" name="EffectsTab.cpp" compile="1" resource="0" file="Source/EffectsTab.cpp"/>
+      <FILE id="f8Q0Pb" name="EffectsTab.h" compile="0" resource="0" file="Source/EffectsTab.h"/>
+      <FILE id="DXdSc8" name="GlobalSettings.cpp" compile="1" resource="0"
+            file="Source/GlobalSettings.cpp"/>
+      <FILE id="QtHVcX" name="GlobalSettings.h" compile="0" resource="0"
+            file="Source/GlobalSettings.h"/>
+      <FILE id="x4WNsQ" name="SettingsTab.cpp" compile="1" resource="0" file="Source/SettingsTab.cpp"/>
+      <FILE id="t2B22q" name="SettingsTab.h" compile="0" resource="0" file="Source/SettingsTab.h"/>
       <FILE id="AYSN3g" name="CustomLookAndFeel.cpp" compile="1" resource="0"
             file="Source/CustomLookAndFeel.cpp"/>
       <FILE id="Mb9a57" name="CustomLookAndFeel.h" compile="0" resource="0"

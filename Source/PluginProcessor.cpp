@@ -220,7 +220,10 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     *notchFilter.state = *juce::dsp::IIR::Coefficients<float>::makeNotch(
         sampleRate, 1000.0f, 0.707f);
 
-    // Начальные параметры
+    juce::dsp::ProcessSpec spec{ sampleRate, static_cast<juce::uint32>(samplesPerBlock), static_cast<juce::uint32>(getTotalNumOutputChannels()) };
+    for (auto& fx : effects)
+        fx.prepare(spec);
+
     updateFilterParameters(1000.0f, 0.7f, 0);
 }
 
@@ -252,10 +255,8 @@ bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
 
 void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-    // 1. Очистка буфера
     buffer.clear();
 
-    // 2. Обновление параметров ADSR
     float attack = apvts.getRawParameterValue("attack")->load();
     float decay = apvts.getRawParameterValue("decay")->load();
     float sustain = apvts.getRawParameterValue("sustain")->load();
@@ -268,12 +269,10 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         apvts.getRawParameterValue("modRelease")->load()
     );
 
-    // 3. Обновление параметров осцилляторов и применение к голосам
     for (int i = 0; i < synth.getNumVoices(); ++i)
     {
         if (auto* voice = dynamic_cast<WavetableVoice*>(synth.getVoice(i)))
         {
-            // Параметры осцилляторов
             float osc1Volume = apvts.getRawParameterValue("osc1Volume")->load();
             float osc1Pitch = apvts.getRawParameterValue("osc1Pitch")->load();
             float osc1Fine = apvts.getRawParameterValue("osc1Fine")->load();
@@ -285,7 +284,6 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             voice->setPitch(osc1Pitch, osc2Pitch, osc1Fine, osc2Fine);
             voice->setAdsrParameters(attack, decay, sustain, release);
 
-            // Установка волновых таблиц
             int osc1WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc1Wave")->load());
             int osc2WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc2Wave")->load());
 
@@ -309,27 +307,27 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         }
     }
 
-    // 4. Генерация аудио синтезатором
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 
-    // 5. Обновление параметров фильтра
     float cutoff = apvts.getRawParameterValue("filterCutoff")->load();
     float resonance = apvts.getRawParameterValue("filterResonance")->load();
     currentFilterType = apvts.getRawParameterValue("filterType")->load();
-
     updateFilterParameters(cutoff, resonance, currentFilterType);
 
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
 
-    if (currentFilterType != 3) // LP/HP/BP
+    if (currentFilterType != 3)
     {
         mainFilter.process(context);
     }
-    else // Notch
+    else
     {
         notchFilter.process(context);
     }
+
+    for (auto& fx : effects)
+        fx.process(buffer);
 }
 
 bool NewProjectAudioProcessor::hasEditor() const
@@ -429,5 +427,186 @@ void NewProjectAudioProcessor::updateFilterParameters(float cutoff, float resona
     {
         *notchFilter.state = *juce::dsp::IIR::Coefficients<float>::makeNotch(
             filterSpec.sampleRate, cutoff, resonance);
+    }
+}
+
+void NewProjectAudioProcessor::EffectProcessor::prepare(const juce::dsp::ProcessSpec& spec)
+{
+    auto coeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(spec.sampleRate, 500);
+    toneFilterDry.state = coeffs;
+    toneFilterWet.state = coeffs;
+    toneFilterDry.prepare(spec);
+    toneFilterWet.prepare(spec);
+    toneFilterDry.reset();
+    toneFilterWet.reset();
+    distortion.functionToUse = [this](float x) { return std::tanh(x * distortionDrive * 2.0f); };
+    distortion.reset();
+
+    chorus.prepare(spec);
+    chorus.reset();
+    chorus.setRate(1.5f);
+    chorus.setDepth(0.3f); 
+    chorus.setCentreDelay(10.0f);
+    chorus.setFeedback(0.0f);
+    chorus.setMix(1.0f);
+
+    phaser.prepare(spec);
+    phaser.reset();
+    phaser.setRate(0.5f);  
+    phaser.setDepth(0.8f); 
+    phaser.setCentreFrequency(1000.0f); 
+    phaser.setFeedback(0.0f);
+    phaser.setMix(1.0f);
+    
+    reverb.prepare(spec);
+    reverb.reset();
+    reverbParams.roomSize = 0.5f;
+    reverbParams.damping = 0.5f;
+    reverbParams.wetLevel = reverbMix;
+    reverbParams.dryLevel = 0.0f;
+    reverb.setParameters(reverbParams);
+
+    delay.prepare(spec);
+    delay.reset();
+    delay.setDelay(delayTimeMs);
+}
+
+void NewProjectAudioProcessor::EffectProcessor::process(juce::AudioBuffer<float>& buffer)
+{
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+
+    switch (type)
+        {
+        case EffectType::None: break;
+
+        case EffectType::Distortion:
+        {
+            juce::AudioBuffer<float> dryBuffer;
+            juce::AudioBuffer<float> wetBuffer;
+            dryBuffer.makeCopyOf(buffer);
+            wetBuffer.makeCopyOf(buffer);
+
+            juce::dsp::AudioBlock<float> wetBlock(wetBuffer);
+            juce::dsp::AudioBlock<float> dryBlock(dryBuffer);
+
+            juce::dsp::ProcessContextReplacing<float> wetCtx(wetBlock);
+            juce::dsp::ProcessContextReplacing<float> dryCtx(dryBlock);
+     
+            distortion.process(wetCtx);
+            toneFilterDry.process(dryCtx);
+            toneFilterWet.process(wetCtx);
+
+            float gainComp = 1.0f / std::sqrt(distortionDrive); // можно подстроить формулу
+            wetBuffer.applyGain(gainComp);
+
+            auto numCh = buffer.getNumChannels();
+            auto numSamples = buffer.getNumSamples();
+            auto* wet = wetBuffer.getArrayOfReadPointers();
+            auto* dry = dryBuffer.getArrayOfReadPointers();
+            auto* out = buffer.getArrayOfWritePointers();
+
+            for (int ch = 0; ch < numCh; ++ch)
+            {
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    out[ch][i] = wet[ch][i] * distortionMix + dry[ch][i] * (1.0f - distortionMix);
+                }
+            }
+
+            break;
+        }
+
+        case EffectType::Chorus:
+        {
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            chorus.process(context);
+
+            auto* dry = dryBuffer.getArrayOfReadPointers();
+            auto* wet = buffer.getArrayOfWritePointers();
+            auto numChannels = buffer.getNumChannels();
+            auto numSamples = buffer.getNumSamples();
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    wet[ch][i] = wet[ch][i] * chorusMix + dry[ch][i] * (1.0f - chorusMix);
+                }
+            }
+            break;
+        }
+
+        case EffectType::Phaser:
+        {
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            phaser.process(context);
+            auto* dry = dryBuffer.getArrayOfReadPointers();
+            auto* wet = buffer.getArrayOfWritePointers();
+            auto numChannels = buffer.getNumChannels();
+            auto numSamples = buffer.getNumSamples();
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    wet[ch][i] = wet[ch][i] * phaserMix + dry[ch][i] * (1.0f - phaserMix);
+                }
+            }
+            break;
+        }
+
+        case EffectType::Reverb:
+        {
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            reverb.process(context);
+
+            auto* dry = dryBuffer.getArrayOfReadPointers();
+            auto* wet = buffer.getArrayOfWritePointers();
+            auto numChannels = buffer.getNumChannels();
+            auto numSamples = buffer.getNumSamples();
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    wet[ch][i] = wet[ch][i] * reverbMix + dry[ch][i] * (1.0f - reverbMix);
+                }
+            }
+            break;
+        }
+
+        case EffectType::Delay:
+        {
+            const int numSamples = buffer.getNumSamples();
+            const int numChannels = buffer.getNumChannels();
+
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                auto* channelData = buffer.getWritePointer(ch);
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    float in = channelData[i];
+                    float delayed = delay.popSample(ch); // читаем задержанный
+                    float fbSample = in + delayed * delayFeedback;
+                    delay.pushSample(ch, fbSample);
+                    channelData[i] = delayed * delayMix + in * (1.0f - delayMix);
+                }
+            }
+            break;
+        }
     }
 }

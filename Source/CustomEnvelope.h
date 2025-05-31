@@ -21,13 +21,13 @@ private:
     double sampleRate = 44100.0;
     State state = Idle;
 
-    // Параметры
+    // ГЏГ Г°Г Г¬ГҐГІГ°Г»
     float attackTime = 0.1f;
     float decayTime = 0.1f;
     float sustainLevel = 1.0f;
     float releaseTime = 0.1f;
 
-    // Текущие значения
+    // Г’ГҐГЄГіГ№ГЁГҐ Г§Г­Г Г·ГҐГ­ГЁГї
     float currentValue = 0.0f;
     int samplesProcessed = 0;
 
