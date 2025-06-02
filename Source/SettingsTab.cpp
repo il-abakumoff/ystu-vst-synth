@@ -2,7 +2,7 @@
 #include "PluginProcessor.h"
 #include "GlobalSettings.h"
 
-SettingsTab::SettingsTab(NewProjectAudioProcessor& p)
+SettingsTab::SettingsTab(PluginProcessor& p)
     : processor(p)
 {
     pathLabel.setText("Preset path:", juce::dontSendNotification);

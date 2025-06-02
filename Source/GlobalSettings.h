@@ -16,6 +16,8 @@ public:
     void setThemeId(int id);
     int getThemeId() const;
 
+    juce::File getWavetableDirectory() const;
+
 private:
     GlobalSettings();
     ~GlobalSettings() = default;

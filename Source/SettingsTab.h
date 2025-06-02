@@ -5,14 +5,14 @@
 class SettingsTab : public juce::Component
 {
 public:
-    SettingsTab(NewProjectAudioProcessor& p);
+    SettingsTab(PluginProcessor& p);
     ~SettingsTab() override;
     void resized() override;
 
     std::function<void(int)> onThemeChanged; // Callback
 
 private:
-    NewProjectAudioProcessor& processor;
+    PluginProcessor& processor;
     juce::Label pathLabel;
     juce::TextEditor pathDisplay;
     juce::TextButton browseButton;    

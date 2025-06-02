@@ -7,17 +7,17 @@
 
 class SettingsTab;
 
-class NewProjectAudioProcessorEditor : public juce::AudioProcessorEditor
+class PluginEditor : public juce::AudioProcessorEditor
 {
 public:
-    NewProjectAudioProcessorEditor(NewProjectAudioProcessor&);
-    ~NewProjectAudioProcessorEditor() override;
+    PluginEditor(PluginProcessor&);
+    ~PluginEditor() override;
 
     void paint(juce::Graphics&) override;
     void resized() override;
 
 private:
-    NewProjectAudioProcessor& audioProcessor;
+    PluginProcessor& audioProcessor;
     juce::TabbedComponent tabs;
 
     struct MainPanel : public juce::Component
@@ -118,7 +118,7 @@ private:
     struct FilterResponseDisplay : public juce::Component,
         public juce::Timer
     {
-        FilterResponseDisplay(NewProjectAudioProcessor&);
+        FilterResponseDisplay(PluginProcessor&);
         ~FilterResponseDisplay() override;
 
         void paint(juce::Graphics&) override;
@@ -126,7 +126,7 @@ private:
 
         void updateResponse();
 
-        NewProjectAudioProcessor& processor;
+        PluginProcessor& processor;
         juce::Path responsePath;
         std::vector<float> magnitudes;
         bool shouldUpdate = true;
@@ -142,5 +142,5 @@ private:
     std::unique_ptr<CustomLookAndFeel> customLookAndFeel;
     std::unique_ptr<FilterResponseDisplay> filterDisplay;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NewProjectAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginEditor)
 };

@@ -39,11 +39,11 @@ private:
 
     float phase1 = 0.0f, phase2 = 0.0f;
     float phaseDelta1 = 0.0f, phaseDelta2 = 0.0f;
-    float level1 = 0.0f, level2 = 0.0f; // Добавляем раздельные уровни
+    float level1 = 0.0f, level2 = 0.0f;
     bool isNotePlaying = false;
 
-    float pitchSemitones1 = 0.0f; // Pitch для первого осциллятора
-    float pitchSemitones2 = 0.0f; // Pitch для второго осциллятора
+    float pitchSemitones1 = 0.0f;
+    float pitchSemitones2 = 0.0f;
 
     CustomEnvelope envelope;
 

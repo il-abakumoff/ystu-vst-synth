@@ -6,46 +6,44 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_core/juce_core.h>
 #include <math.h>
+#include "GlobalSettings.h"
 
 
-NewProjectAudioProcessor::NewProjectAudioProcessor()
+PluginProcessor::PluginProcessor()
     : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
     apvts(*this, nullptr, "Parameters", createParameters())
 {
-
-    // Инициализация таблиц
-    initWavetables();
-
     for (int i = 0; i < kMaxVoices; ++i)
     {
-        synth.addVoice(new WavetableVoice(&sineTable, &sineTable));
+        synth.addVoice(new WavetableVoice(&fallbackWaveform, &fallbackWaveform));
     }
     synth.addSound(new SynthSound());
-
-    // Настройка синтезатора
     setupSynth();
 }
 
-juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::createParameters()
+juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParameters()
 {
+    initWavetables();
+
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
+   
+    juce::StringArray waveNames;
+    for (const auto& pair : wavetableList)
+        waveNames.add(pair.first);
 
-    // osc params
     layout.add(std::make_unique<juce::AudioParameterChoice>(
-        "osc1Wave", "Oscillator 1 Wave",
-        juce::StringArray{ "Sine", "Saw", "Square" }, 0));
+        "osc1Wave", "Oscillator 1 Wave", waveNames, 0));
 
     layout.add(std::make_unique<juce::AudioParameterChoice>(
-        "osc2Wave", "Oscillator 2 Wave",
-        juce::StringArray{ "Sine", "Saw", "Square" }, 0));
+        "osc2Wave", "Oscillator 2 Wave", waveNames, 0));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc1Volume", "Oscillator 1 Volume",
-        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc2Volume", "Oscillator 2 Volume",
-        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc1Pitch", "Oscillator 1 Pitch",
@@ -63,8 +61,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
         "osc2Fine", "Oscillator 2 Fine",
         juce::NormalisableRange<float>(-100.0f, 100.0f, 1.0f), 0.0f));
 
-    // Amp ADSR params
-    layout.add(std::make_unique<juce::AudioParameterFloat>(
+    layout.add(std::make_unique<juce::AudioParameterFloat>( // Amp ADSR params
         "attack", "Attack",
         juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.1f));
 
@@ -80,8 +77,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
         "release", "Release",
         juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.2f));
 
-    // FILTER
-    layout.add(std::make_unique<juce::AudioParameterChoice>(
+    layout.add(std::make_unique<juce::AudioParameterChoice>(   // FILTER
         "filterType", "Filter Type",
         juce::StringArray{ "Low-pass", "High-pass", "Band-pass", "Notch" }, 0));
 
@@ -92,7 +88,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "filterResonance", "Filter Resonance",
         juce::NormalisableRange<float>(0.1f, 2.0f, 0.01f), 0.7f));
-
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "modAttack", "Mod Attack",
@@ -112,38 +107,47 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
     return layout;
 }
 
-void NewProjectAudioProcessor::initWavetables()
+void PluginProcessor::loadCustomWavetables()
 {
-    const int tableSize = 1024;
+    auto folder = GlobalSettings::getInstance().getWavetableDirectory();
+    auto files = folder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false, "*.wtxt");
 
-    sineTable.resize(tableSize);
-    for (int i = 0; i < tableSize; ++i)
-        sineTable[i] = std::sin(2.0f * juce::MathConstants<float>::pi * i / tableSize);
+    wavetableList.clear();
 
-    sawTable.resize(tableSize);
-    for (int i = 0; i < tableSize; ++i)
+    for (const auto& file : files)
     {
-        float saw = 0.0f;
-        for (int harmonic = 1; harmonic <= 8; ++harmonic)
-            saw += std::sin(2.0f * juce::MathConstants<float>::pi * i * harmonic / tableSize) / harmonic;
-        sawTable[i] = saw * 0.5f;
+        std::vector<float> table;
+        juce::FileInputStream stream(file);
+
+        while (!stream.isExhausted())
+        {
+            auto line = stream.readNextLine();
+            table.push_back(line.getFloatValue());
+        }
+
+        if (!table.empty())
+            wavetableList.emplace_back(file.getFileNameWithoutExtension(), std::move(table));
     }
 
-    squareTable.resize(tableSize);
-    for (int i = 0; i < tableSize; ++i)
-        squareTable[i] = (i < tableSize / 2) ? 1.0f : -1.0f;
+    maxWaveIndex = (int)wavetableList.size();
+    fallbackWaveform.assign(1024, 0.0f);
 }
 
-NewProjectAudioProcessor::~NewProjectAudioProcessor()
+void PluginProcessor::initWavetables()
+{
+    loadCustomWavetables();
+}
+
+PluginProcessor::~PluginProcessor()
 {
 }
 
-const juce::String NewProjectAudioProcessor::getName() const
+const juce::String PluginProcessor::getName() const
 {
     return JucePlugin_Name;
 }
 
-bool NewProjectAudioProcessor::acceptsMidi() const
+bool PluginProcessor::acceptsMidi() const
 {
    #if JucePlugin_WantsMidiInput
     return true;
@@ -152,7 +156,7 @@ bool NewProjectAudioProcessor::acceptsMidi() const
    #endif
 }
 
-bool NewProjectAudioProcessor::producesMidi() const
+bool PluginProcessor::producesMidi() const
 {
    #if JucePlugin_ProducesMidiOutput
     return true;
@@ -161,7 +165,7 @@ bool NewProjectAudioProcessor::producesMidi() const
    #endif
 }
 
-bool NewProjectAudioProcessor::isMidiEffect() const
+bool PluginProcessor::isMidiEffect() const
 {
    #if JucePlugin_IsMidiEffect
     return true;
@@ -170,36 +174,36 @@ bool NewProjectAudioProcessor::isMidiEffect() const
    #endif
 }
 
-double NewProjectAudioProcessor::getTailLengthSeconds() const
+double PluginProcessor::getTailLengthSeconds() const
 {
     return 0.0;
 }
 
-int NewProjectAudioProcessor::getNumPrograms()
+int PluginProcessor::getNumPrograms()
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
-int NewProjectAudioProcessor::getCurrentProgram()
+int PluginProcessor::getCurrentProgram()
 {
     return 0;
 }
 
-void NewProjectAudioProcessor::setCurrentProgram (int index)
+void PluginProcessor::setCurrentProgram (int index)
 {
 }
 
-const juce::String NewProjectAudioProcessor::getProgramName (int index)
+const juce::String PluginProcessor::getProgramName (int index)
 {
     return {};
 }
 
-void NewProjectAudioProcessor::changeProgramName (int index, const juce::String& newName)
+void PluginProcessor::changeProgramName (int index, const juce::String& newName)
 {
 }
 
-void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     synth.setCurrentPlaybackSampleRate(sampleRate);
 
@@ -227,13 +231,13 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     updateFilterParameters(1000.0f, 0.7f, 0);
 }
 
-void NewProjectAudioProcessor::releaseResources()
+void PluginProcessor::releaseResources()
 {
 
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
-bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
   #if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
@@ -253,7 +257,7 @@ bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
 }
 #endif
 
-void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     buffer.clear();
 
@@ -290,17 +294,20 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             const std::vector<float>* table1 = nullptr;
             const std::vector<float>* table2 = nullptr;
 
-            switch (osc1WaveIndex) {
-            case 0: table1 = &sineTable; break;
-            case 1: table1 = &sawTable; break;
-            case 2: table1 = &squareTable; break;
+            if (osc1WaveIndex >= 0 && osc1WaveIndex < maxWaveIndex) {
+                table1 = &wavetableList[osc1WaveIndex].second;
+                DBG(osc1WaveIndex);
             }
+            else
+            {
+                table1 = &fallbackWaveform;
+            }
+               
 
-            switch (osc2WaveIndex) {
-            case 0: table2 = &sineTable; break;
-            case 1: table2 = &sawTable; break;
-            case 2: table2 = &squareTable; break;
-            }
+            if (osc2WaveIndex >= 0 && osc2WaveIndex < maxWaveIndex)
+                table2 = &wavetableList[osc2WaveIndex].second;
+            else
+                table2 = &fallbackWaveform;
 
             voice->setWaveform1(table1);
             voice->setWaveform2(table2);
@@ -330,59 +337,47 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         fx.process(buffer);
 }
 
-bool NewProjectAudioProcessor::hasEditor() const
+bool PluginProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor* NewProjectAudioProcessor::createEditor()
+juce::AudioProcessorEditor* PluginProcessor::createEditor()
 {
-    return new NewProjectAudioProcessorEditor (*this);
+    return new PluginEditor (*this);
 }
 
 
-void NewProjectAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
+void PluginProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    // Создаем XML-структуру для сохранения
     auto state = apvts.copyState(); // Автоматически сохраняет все параметры APVTS
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
-
-    // Дополнительно можно сохранить другие данные (если есть)
-    // xml->setAttribute("customData", someValue);
-
-    // Копируем XML в бинарный блок
     copyXmlToBinary(*xml, destData);
 }
 
-void NewProjectAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
+void PluginProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    // Восстанавливаем из бинарных данных
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
-
     if (xmlState.get() != nullptr)
     {
-        // Восстанавливаем параметры APVTS
         apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
-
-        // Дополнительно можно восстановить другие данные
-        // someValue = xmlState->getDoubleAttribute("customData", defaultValue);
     }
 }
 
-void NewProjectAudioProcessor::savePresetToFile(const juce::File& file)
+void PluginProcessor::savePresetToFile(const juce::File& file)
 {
     auto state = apvts.copyState();
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
 
     if (xml)
     {
-        xml->setTagName("STATE"); // важно для корректной загрузки!
+        xml->setTagName("STATE"); 
         xml->setAttribute("version", JucePlugin_VersionString);
         xml->writeTo(file);
     }
 }
 
-void NewProjectAudioProcessor::loadPresetFromFile(const juce::File& file)
+void PluginProcessor::loadPresetFromFile(const juce::File& file)
 {
     if (!file.existsAsFile()) return;
 
@@ -395,23 +390,21 @@ void NewProjectAudioProcessor::loadPresetFromFile(const juce::File& file)
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new NewProjectAudioProcessor();
+    return new PluginProcessor();
 }
 
-void NewProjectAudioProcessor::setupSynth()
+void PluginProcessor::setupSynth()
 {
     synth.clearVoices();
     synth.clearSounds();
 
-    // Добавляем голоса
     for (int i = 0; i < kMaxVoices; ++i)
-        synth.addVoice(new WavetableVoice(&sineTable, &sineTable));
+        synth.addVoice(new WavetableVoice(&fallbackWaveform, &fallbackWaveform));
 
-    // Добавляем звук (обязательно)
     synth.addSound(new SynthSound());
 }
 
-void NewProjectAudioProcessor::updateFilterParameters(float cutoff, float resonance, int type)
+void PluginProcessor::updateFilterParameters(float cutoff, float resonance, int type)
 { 
     if (type != 3) { // LP/HP/BP
         mainFilter.setCutoffFrequency(cutoff);
@@ -430,7 +423,7 @@ void NewProjectAudioProcessor::updateFilterParameters(float cutoff, float resona
     }
 }
 
-void NewProjectAudioProcessor::EffectProcessor::prepare(const juce::dsp::ProcessSpec& spec)
+void PluginProcessor::EffectProcessor::prepare(const juce::dsp::ProcessSpec& spec)
 {
     auto coeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(spec.sampleRate, 500);
     toneFilterDry.state = coeffs;
@@ -471,7 +464,7 @@ void NewProjectAudioProcessor::EffectProcessor::prepare(const juce::dsp::Process
     delay.setDelay(delayTimeMs);
 }
 
-void NewProjectAudioProcessor::EffectProcessor::process(juce::AudioBuffer<float>& buffer)
+void PluginProcessor::EffectProcessor::process(juce::AudioBuffer<float>& buffer)
 {
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);

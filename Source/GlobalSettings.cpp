@@ -130,3 +130,10 @@ int GlobalSettings::getThemeId() const
     const juce::ScopedLock sl(lock);
     return themeId;
 }
+
+juce::File GlobalSettings::getWavetableDirectory() const
+{
+    auto waveFolder = getSettingsDirectory().getChildFile("WaveTables");
+    waveFolder.createDirectory(); // создает, если не существует
+    return waveFolder;
+}

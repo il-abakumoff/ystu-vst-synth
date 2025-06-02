@@ -7,11 +7,11 @@
 #include <juce_dsp/juce_dsp.h> // Для DSP модулей
 #include "EffectTypes.h"
 
-class NewProjectAudioProcessor  : public juce::AudioProcessor
+class PluginProcessor  : public juce::AudioProcessor
 {
 public:
-    NewProjectAudioProcessor();
-    ~NewProjectAudioProcessor() override;
+    PluginProcessor();
+    ~PluginProcessor() override;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
@@ -88,11 +88,12 @@ public:
 
     std::array<EffectProcessor, 3> effects;
 
-    static constexpr int kMaxVoices = 12; // Максимальное число голосов
-    juce::Synthesiser synth;             // Основной синтезатор JUCE
+    static constexpr int kMaxVoices = 12;
+    juce::Synthesiser synth;
 
-    // Параметры плагина (DAW, Automation)
-    juce::AudioParameterInt* voiceCountParam;  // Количество голосов (1-24)
+    juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
+
+    juce::AudioParameterInt* voiceCountParam;
     juce::AudioParameterChoice* osc1WaveParam;
     juce::AudioParameterChoice* osc2WaveParam;
     juce::AudioParameterFloat* osc1VolumeParam;
@@ -101,22 +102,13 @@ public:
     juce::AudioParameterFloat* osc2PitchParam;    
     juce::AudioParameterFloat* osc1FineParam;
     juce::AudioParameterFloat* osc2FineParam;
-    
-    std::vector<float> sineTable;       // Таблица синуса
-    std::vector<float> sawTable;        // Таблица "супер пилы"
-    std::vector<float> squareTable;     // Таблица квадрата
-
-    juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
-
     juce::AudioParameterFloat* attackParam;
     juce::AudioParameterFloat* decayParam;
     juce::AudioParameterFloat* sustainParam;
     juce::AudioParameterFloat* releaseParam;
-
     juce::AudioParameterChoice* filterTypeParam;
     juce::AudioParameterFloat* filterCutoffParam;
     juce::AudioParameterFloat* filterResonanceParam;
-
     juce::AudioParameterFloat* modAttackParam;
     juce::AudioParameterFloat* modDecayParam;
     juce::AudioParameterFloat* modSustainParam;
@@ -129,16 +121,22 @@ public:
         return filterSpec;
     }
 
-private:
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NewProjectAudioProcessor)
+    std::vector<std::pair<juce::String, std::vector<float>>> wavetableList;
+    std::vector<float> fallbackWaveform;
+    int maxWaveIndex = 1;
 
-    void initWavetables();              // Инициализация таблиц
-    void setupSynth();                  // Настройка синтезатора
+private:
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginProcessor)
+
+    void initWavetables();            
+    void setupSynth();               
 
     void updateFilterParameters(float cutoff, float resonance, int type);
 
     juce::AudioProcessorValueTreeState apvts;
     juce::AudioProcessorValueTreeState::ParameterLayout createParameters();
+
+    void loadCustomWavetables();
 
     juce::dsp::StateVariableTPTFilter<float> mainFilter;
     juce::dsp::ProcessorDuplicator<

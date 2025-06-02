@@ -9,7 +9,7 @@
 #include "EffectsTab.h"
 
 
-NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioProcessor& p)
+PluginEditor::PluginEditor(PluginProcessor& p)
     : AudioProcessorEditor(&p),
     audioProcessor(p),
     tabs(juce::TabbedButtonBar::TabsAtTop),
@@ -144,7 +144,7 @@ NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor(NewProjectAudioPr
         };
 }
 
-void NewProjectAudioProcessorEditor::setupMainPanel()
+void PluginEditor::setupMainPanel()
 {
     // PRESET FIELDS
     {
@@ -190,11 +190,13 @@ void NewProjectAudioProcessorEditor::setupMainPanel()
 
     // OSC 1
     {
-        
+        mainPanel->osc1WaveSelector.clear();
+
         mainPanel->addAndMakeVisible(mainPanel->osc1WaveSelector);
-        mainPanel->osc1WaveSelector.addItem("Sine", 1);
-        mainPanel->osc1WaveSelector.addItem("Saw", 2);
-        mainPanel->osc1WaveSelector.addItem("Square", 3);
+        int id = 1;
+        for (const auto& pair : audioProcessor.wavetableList)
+            mainPanel->osc1WaveSelector.addItem(pair.first, id++);
+
         mainPanel->osc1WaveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
             audioProcessor.getAPVTS(), "osc1Wave", mainPanel->osc1WaveSelector);
 
@@ -219,10 +221,13 @@ void NewProjectAudioProcessorEditor::setupMainPanel()
 
     // OSC 2
     {
+        mainPanel->osc2WaveSelector.clear();
+
         mainPanel->addAndMakeVisible(mainPanel->osc2WaveSelector);
-        mainPanel->osc2WaveSelector.addItem("Sine", 1);
-        mainPanel->osc2WaveSelector.addItem("Saw", 2);
-        mainPanel->osc2WaveSelector.addItem("Square", 3);
+        int id = 1;
+        for (const auto& pair : audioProcessor.wavetableList)
+            mainPanel->osc2WaveSelector.addItem(pair.first, id++);
+
         mainPanel->osc2WaveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
             audioProcessor.getAPVTS(), "osc2Wave", mainPanel->osc2WaveSelector);
 
@@ -428,7 +433,7 @@ void NewProjectAudioProcessorEditor::setupMainPanel()
     }
 }
 
-void NewProjectAudioProcessorEditor::setupMatrixPanel()
+void PluginEditor::setupMatrixPanel()
 {
     constexpr int numRows = 4;
     const int rowHeight = 30;
@@ -484,7 +489,7 @@ void NewProjectAudioProcessorEditor::setupMatrixPanel()
     }
 }
 
-void NewProjectAudioProcessorEditor::paint(juce::Graphics& g)
+void PluginEditor::paint(juce::Graphics& g)
 {
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
@@ -507,7 +512,7 @@ void NewProjectAudioProcessorEditor::paint(juce::Graphics& g)
     }
 }
 
-void NewProjectAudioProcessorEditor::resized()
+void PluginEditor::resized()
 {
     tabs.setBounds(getLocalBounds());
 
@@ -516,7 +521,7 @@ void NewProjectAudioProcessorEditor::resized()
     tabs.setBounds(area);
 }
 
-void NewProjectAudioProcessorEditor::MainPanel::resized()
+void PluginEditor::MainPanel::resized()
 {
     auto area = getLocalBounds();
     const int margin = 10; // Общий отступ
@@ -635,7 +640,7 @@ void NewProjectAudioProcessorEditor::MainPanel::resized()
     }
 }
 
-void NewProjectAudioProcessorEditor::MatrixPanel::resized()
+void PluginEditor::MatrixPanel::resized()
 {
     auto area = getLocalBounds().reduced(10);
     area.removeFromTop(30); // Для заголовка
@@ -667,12 +672,12 @@ void NewProjectAudioProcessorEditor::MatrixPanel::resized()
     }
 }
 
-NewProjectAudioProcessorEditor::~NewProjectAudioProcessorEditor()
+PluginEditor::~PluginEditor()
 {
     setLookAndFeel(nullptr);
 }
 
-NewProjectAudioProcessorEditor::FilterResponseDisplay::FilterResponseDisplay(NewProjectAudioProcessor& p)
+PluginEditor::FilterResponseDisplay::FilterResponseDisplay(PluginProcessor& p)
     : processor(p)
 {
     startTimerHz(30); // Обновление 30 раз в секунду
@@ -680,12 +685,12 @@ NewProjectAudioProcessorEditor::FilterResponseDisplay::FilterResponseDisplay(New
     setOpaque(false);
 }
 
-NewProjectAudioProcessorEditor::FilterResponseDisplay::~FilterResponseDisplay()
+PluginEditor::FilterResponseDisplay::~FilterResponseDisplay()
 {
     stopTimer();
 }
 
-void NewProjectAudioProcessorEditor::FilterResponseDisplay::paint(juce::Graphics& g)
+void PluginEditor::FilterResponseDisplay::paint(juce::Graphics& g)
 {
     // Фон с градиентом для лучшего восприятия
     g.setGradientFill(juce::ColourGradient(
@@ -732,7 +737,7 @@ void NewProjectAudioProcessorEditor::FilterResponseDisplay::paint(juce::Graphics
     g.drawVerticalLine(static_cast<int>(cutoffX), 0, getHeight());
 }
 
-void NewProjectAudioProcessorEditor::FilterResponseDisplay::timerCallback()
+void PluginEditor::FilterResponseDisplay::timerCallback()
 {
     if (shouldUpdate)
     {
@@ -742,7 +747,7 @@ void NewProjectAudioProcessorEditor::FilterResponseDisplay::timerCallback()
     }
 }
 
-void NewProjectAudioProcessorEditor::FilterResponseDisplay::updateResponse()
+void PluginEditor::FilterResponseDisplay::updateResponse()
 {
     constexpr double sampleRate = 44100.0;
     constexpr int numPoints = 800;
@@ -878,4 +883,3 @@ void NewProjectAudioProcessorEditor::FilterResponseDisplay::updateResponse()
         }
     }
 }
-
