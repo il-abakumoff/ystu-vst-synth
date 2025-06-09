@@ -18,16 +18,14 @@ public:
 private:
     enum State { Idle, Attack, Decay, Sustain, Release };
 
-    double sampleRate = 44100.0;
+    double sampleRate;
     State state = Idle;
 
-    // Параметры
     float attackTime = 0.1f;
     float decayTime = 0.1f;
     float sustainLevel = 1.0f;
     float releaseTime = 0.1f;
 
-    // Текущие значения
     float currentValue = 0.0f;
     int samplesProcessed = 0;
 

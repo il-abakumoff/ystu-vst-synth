@@ -4,57 +4,64 @@
 #include "SynthSound.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_devices/juce_audio_devices.h>
+#include <juce_core/juce_core.h>
+#include <math.h>
+#include "GlobalSettings.h"
 
 
-NewProjectAudioProcessor::NewProjectAudioProcessor()
+PluginProcessor::PluginProcessor()
     : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
     apvts(*this, nullptr, "Parameters", createParameters())
 {
-
-    // Инициализация таблиц
-    initWavetables();
-
     for (int i = 0; i < kMaxVoices; ++i)
     {
-        synth.addVoice(new WavetableVoice(&sineTable, &sineTable));
+        synth.addVoice(new WavetableVoice(&fallbackWaveform, &fallbackWaveform));
     }
     synth.addSound(new SynthSound());
-
-    // Настройка синтезатора
     setupSynth();
 }
 
-juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::createParameters()
+juce::AudioProcessorValueTreeState::ParameterLayout PluginProcessor::createParameters()
 {
+    initWavetables();
+
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
+   
+    juce::StringArray waveNames;
+    for (const auto& pair : wavetableList)
+        waveNames.add(pair.first);
 
-    // osc params
     layout.add(std::make_unique<juce::AudioParameterChoice>(
-        "osc1Wave", "Oscillator 1 Wave",
-        juce::StringArray{ "Sine", "Saw", "Square" }, 0));
+        "osc1Wave", "Oscillator 1 Wave", waveNames, 0));
 
     layout.add(std::make_unique<juce::AudioParameterChoice>(
-        "osc2Wave", "Oscillator 2 Wave",
-        juce::StringArray{ "Sine", "Saw", "Square" }, 0));
+        "osc2Wave", "Oscillator 2 Wave", waveNames, 0));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc1Volume", "Oscillator 1 Volume",
-        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc2Volume", "Oscillator 2 Volume",
-        juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f));
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc1Pitch", "Oscillator 1 Pitch",
-        juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+        juce::NormalisableRange<float>(-36.0f, 36.0f, 1.0f), 0.0f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "osc2Pitch", "Oscillator 2 Pitch",
-        juce::NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
-
-    // Amp ADSR params
+        juce::NormalisableRange<float>(-36.0f, 36.0f, 1.0f), 0.0f));    
+    
     layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "osc1Fine", "Oscillator 1 Fine",
+        juce::NormalisableRange<float>(-100.0f, 100.0f, 1.0f), 0.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "osc2Fine", "Oscillator 2 Fine",
+        juce::NormalisableRange<float>(-100.0f, 100.0f, 1.0f), 0.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>( // Amp ADSR params
         "attack", "Attack",
         juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.1f));
 
@@ -70,10 +77,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
         "release", "Release",
         juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.2f));
 
-    // FILTER
-    layout.add(std::make_unique<juce::AudioParameterChoice>(
+    layout.add(std::make_unique<juce::AudioParameterChoice>(   // FILTER
         "filterType", "Filter Type",
-        juce::StringArray{ "Low-pass", "High-pass" }, 0));
+        juce::StringArray{ "Low-pass", "High-pass", "Band-pass", "Notch" }, 0));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "filterCutoff", "Filter Cutoff",
@@ -83,43 +89,65 @@ juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::cr
         "filterResonance", "Filter Resonance",
         juce::NormalisableRange<float>(0.1f, 2.0f, 0.01f), 0.7f));
 
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "modAttack", "Mod Attack",
+        juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.1f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "modDecay", "Mod Decay",
+        juce::NormalisableRange<float>(0.0f, 3.0f, 0.01f), 0.3f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "modSustain", "Mod Sustain",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "modRelease", "Mod Release",
+        juce::NormalisableRange<float>(0.0f, 5.0f, 0.01f), 0.2f));
     return layout;
 }
 
-void NewProjectAudioProcessor::initWavetables()
+void PluginProcessor::loadCustomWavetables()
 {
-    const int tableSize = 1024;
+    auto folder = GlobalSettings::getInstance().getWavetableDirectory();
+    auto files = folder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false, "*.wtxt");
 
-    sineTable.resize(tableSize);
-    for (int i = 0; i < tableSize; ++i)
-        sineTable[i] = std::sin(2.0f * juce::MathConstants<float>::pi * i / tableSize);
+    wavetableList.clear();
 
-    sawTable.resize(tableSize);
-    for (int i = 0; i < tableSize; ++i)
+    for (const auto& file : files)
     {
-        float saw = 0.0f;
-        for (int harmonic = 1; harmonic <= 8; ++harmonic)
-            saw += std::sin(2.0f * juce::MathConstants<float>::pi * i * harmonic / tableSize) / harmonic;
-        sawTable[i] = saw * 0.5f;
+        std::vector<float> table;
+        juce::FileInputStream stream(file);
+
+        while (!stream.isExhausted())
+        {
+            auto line = stream.readNextLine();
+            table.push_back(line.getFloatValue());
+        }
+
+        if (!table.empty())
+            wavetableList.emplace_back(file.getFileNameWithoutExtension(), std::move(table));
     }
 
-    squareTable.resize(tableSize);
-    for (int i = 0; i < tableSize; ++i)
-        squareTable[i] = (i < tableSize / 2) ? 1.0f : -1.0f;
+    maxWaveIndex = (int)wavetableList.size();
+    fallbackWaveform.assign(1024, 0.0f);
 }
 
+void PluginProcessor::initWavetables()
+{
+    loadCustomWavetables();
+}
 
-NewProjectAudioProcessor::~NewProjectAudioProcessor()
+PluginProcessor::~PluginProcessor()
 {
 }
 
-//==============================================================================
-const juce::String NewProjectAudioProcessor::getName() const
+const juce::String PluginProcessor::getName() const
 {
     return JucePlugin_Name;
 }
 
-bool NewProjectAudioProcessor::acceptsMidi() const
+bool PluginProcessor::acceptsMidi() const
 {
    #if JucePlugin_WantsMidiInput
     return true;
@@ -128,7 +156,7 @@ bool NewProjectAudioProcessor::acceptsMidi() const
    #endif
 }
 
-bool NewProjectAudioProcessor::producesMidi() const
+bool PluginProcessor::producesMidi() const
 {
    #if JucePlugin_ProducesMidiOutput
     return true;
@@ -137,7 +165,7 @@ bool NewProjectAudioProcessor::producesMidi() const
    #endif
 }
 
-bool NewProjectAudioProcessor::isMidiEffect() const
+bool PluginProcessor::isMidiEffect() const
 {
    #if JucePlugin_IsMidiEffect
     return true;
@@ -146,37 +174,36 @@ bool NewProjectAudioProcessor::isMidiEffect() const
    #endif
 }
 
-double NewProjectAudioProcessor::getTailLengthSeconds() const
+double PluginProcessor::getTailLengthSeconds() const
 {
     return 0.0;
 }
 
-int NewProjectAudioProcessor::getNumPrograms()
+int PluginProcessor::getNumPrograms()
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
-int NewProjectAudioProcessor::getCurrentProgram()
+int PluginProcessor::getCurrentProgram()
 {
     return 0;
 }
 
-void NewProjectAudioProcessor::setCurrentProgram (int index)
+void PluginProcessor::setCurrentProgram (int index)
 {
 }
 
-const juce::String NewProjectAudioProcessor::getProgramName (int index)
+const juce::String PluginProcessor::getProgramName (int index)
 {
     return {};
 }
 
-void NewProjectAudioProcessor::changeProgramName (int index, const juce::String& newName)
+void PluginProcessor::changeProgramName (int index, const juce::String& newName)
 {
 }
 
-//==============================================================================
-void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     synth.setCurrentPlaybackSampleRate(sampleRate);
 
@@ -192,35 +219,112 @@ void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     filterSpec.maximumBlockSize = samplesPerBlock;
     filterSpec.numChannels = getTotalNumOutputChannels();
 
-    filter.prepare(filterSpec);
-    filter.reset();
+    mainFilter.prepare({ sampleRate, (juce::uint32)samplesPerBlock, 2 });
+    notchFilter.prepare(filterSpec);
+    *notchFilter.state = *juce::dsp::IIR::Coefficients<float>::makeNotch(
+        sampleRate, 1000.0f, 0.707f);
 
-    // Начальные параметры
+    juce::dsp::ProcessSpec spec{ sampleRate, static_cast<juce::uint32>(samplesPerBlock), static_cast<juce::uint32>(getTotalNumOutputChannels()) };
+    for (auto& fx : effects)
+        fx.prepare(spec);
+
     updateFilterParameters(1000.0f, 0.7f, 0);
 }
 
-void NewProjectAudioProcessor::releaseResources()
+void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+    buffer.clear();
+
+    float attack = apvts.getRawParameterValue("attack")->load();
+    float decay = apvts.getRawParameterValue("decay")->load();
+    float sustain = apvts.getRawParameterValue("sustain")->load();
+    float release = apvts.getRawParameterValue("release")->load();
+
+    modEnvelope.setParameters(
+        apvts.getRawParameterValue("modAttack")->load(),
+        apvts.getRawParameterValue("modDecay")->load(),
+        apvts.getRawParameterValue("modSustain")->load(),
+        apvts.getRawParameterValue("modRelease")->load()
+    );
+
+    for (int i = 0; i < synth.getNumVoices(); ++i)
+    {
+        if (auto* voice = dynamic_cast<WavetableVoice*>(synth.getVoice(i)))
+        {
+            float osc1Volume = apvts.getRawParameterValue("osc1Volume")->load();
+            float osc1Pitch = apvts.getRawParameterValue("osc1Pitch")->load();
+            float osc1Fine = apvts.getRawParameterValue("osc1Fine")->load();
+            float osc2Volume = apvts.getRawParameterValue("osc2Volume")->load();
+            float osc2Pitch = apvts.getRawParameterValue("osc2Pitch")->load();
+            float osc2Fine = apvts.getRawParameterValue("osc2Fine")->load();
+
+            voice->setVolume(osc1Volume, osc2Volume);
+            voice->setPitch(osc1Pitch, osc2Pitch, osc1Fine, osc2Fine);
+            voice->setAdsrParameters(attack, decay, sustain, release);
+
+            int osc1WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc1Wave")->load());
+            int osc2WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc2Wave")->load());
+
+            const std::vector<float>* table1 = nullptr;
+            const std::vector<float>* table2 = nullptr;
+
+            if (osc1WaveIndex >= 0 && osc1WaveIndex < maxWaveIndex) {
+                table1 = &wavetableList[osc1WaveIndex].second;
+            }
+            else
+            {
+                table1 = &fallbackWaveform;
+            }
+
+            if (osc2WaveIndex >= 0 && osc2WaveIndex < maxWaveIndex)
+                table2 = &wavetableList[osc2WaveIndex].second;
+            else
+                table2 = &fallbackWaveform;
+
+            voice->setWaveform1(table1);
+            voice->setWaveform2(table2);
+        }
+    }
+
+    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+
+    float cutoff = apvts.getRawParameterValue("filterCutoff")->load();
+    float resonance = apvts.getRawParameterValue("filterResonance")->load();
+    currentFilterType = apvts.getRawParameterValue("filterType")->load();
+    updateFilterParameters(cutoff, resonance, currentFilterType);
+
+    if (currentFilterType != 3)
+    {
+        mainFilter.process(context);
+    }
+    else
+    {
+        notchFilter.process(context);
+    }
+
+    for (auto& fx : effects)
+        fx.process(buffer);
+}
+
+void PluginProcessor::releaseResources()
+{
+
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
-bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
   #if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
-    // This checks if the input layout matches the output layout
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
@@ -231,135 +335,268 @@ bool NewProjectAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
 }
 #endif
 
-void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+bool PluginProcessor::hasEditor() const
 {
-    buffer.clear();
+    return true;
+}
 
-    float attack = apvts.getRawParameterValue("attack")->load();
-    float decay = apvts.getRawParameterValue("decay")->load();
-    float sustain = apvts.getRawParameterValue("sustain")->load();
-    float release = apvts.getRawParameterValue("release")->load();
+juce::AudioProcessorEditor* PluginProcessor::createEditor()
+{
+    return new PluginEditor (*this);
+}
 
+void PluginProcessor::getStateInformation(juce::MemoryBlock& destData)
+{
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
+}
 
-    for (int i = 0; i < synth.getNumVoices(); ++i)
+void PluginProcessor::setStateInformation(const void* data, int sizeInBytes)
+{
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+    if (xmlState.get() != nullptr)
     {
-        if (auto* voice = dynamic_cast<WavetableVoice*>(synth.getVoice(i)))
-        {
-            // Обновляем параметры для ОСЦИЛЛЯТОРА 1
-            float osc1Volume = apvts.getRawParameterValue("osc1Volume")->load();
-            float osc1Pitch = apvts.getRawParameterValue("osc1Pitch")->load();
-
-            // Обновляем параметры для ОСЦИЛЛЯТОРА 2
-            float osc2Volume = apvts.getRawParameterValue("osc2Volume")->load();
-            float osc2Pitch = apvts.getRawParameterValue("osc2Pitch")->load();
-
-            // Устанавливаем параметры
-            voice->setVolume(osc1Volume, osc2Volume);
-            voice->setPitch(osc1Pitch, osc2Pitch);
-            voice->setAdsrParameters(
-                apvts.getRawParameterValue("attack")->load(),
-                apvts.getRawParameterValue("decay")->load(),
-                apvts.getRawParameterValue("sustain")->load(),
-                apvts.getRawParameterValue("release")->load()
-            );
-
-            // Устанавливаем разные волновые таблицы для каждого осциллятора
-            int osc1WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc1Wave")->load());
-            int osc2WaveIndex = static_cast<int>(apvts.getRawParameterValue("osc2Wave")->load());
-
-            const std::vector<float>* table1 = nullptr;
-            const std::vector<float>* table2 = nullptr;
-            switch (osc1WaveIndex) {
-            case 0: table1 = &sineTable; break;
-            case 1: table1 = &sawTable; break;
-            case 2: table1 = &squareTable; break;
-            }
-
-            switch (osc2WaveIndex) {
-            case 0: table2 = &sineTable; break;
-            case 1: table2 = &sawTable; break;
-            case 2: table2 = &squareTable; break;
-            }
-
-            voice->setWaveform1(table1);
-            voice->setWaveform2(table2); // Теперь разные таблицы
-        }
+        apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
     }
-
-    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-
-    // Обновление параметров фильтра
-    float cutoff = apvts.getRawParameterValue("filterCutoff")->load();
-    float resonance = apvts.getRawParameterValue("filterResonance")->load();
-    int filterType = apvts.getRawParameterValue("filterType")->load();
-
-    // Обновляем параметры фильтра
-    updateFilterParameters(cutoff, resonance, filterType);
-
-    // Обработка фильтром
-    juce::dsp::AudioBlock<float> block(buffer);
-    juce::dsp::ProcessContextReplacing<float> context(block);
-    filter.process(context);
 }
 
-//==============================================================================
-bool NewProjectAudioProcessor::hasEditor() const
+void PluginProcessor::savePresetToFile(const juce::File& file)
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+
+    if (xml)
+    {
+        xml->setTagName("STATE"); 
+        xml->setAttribute("version", JucePlugin_VersionString);
+        xml->writeTo(file);
+    }
 }
 
-juce::AudioProcessorEditor* NewProjectAudioProcessor::createEditor()
+void PluginProcessor::loadPresetFromFile(const juce::File& file)
 {
-    return new NewProjectAudioProcessorEditor (*this);
+    if (!file.existsAsFile()) return;
+
+    std::unique_ptr<juce::XmlElement> xml(juce::XmlDocument::parse(file));
+    if (xml && xml->hasTagName("STATE"))
+    {
+        apvts.replaceState(juce::ValueTree::fromXml(*xml));
+    }
 }
 
-//==============================================================================
-void NewProjectAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
-{
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
-}
-
-void NewProjectAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
-{
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
-}
-
-//==============================================================================
-// This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new NewProjectAudioProcessor();
+    return new PluginProcessor();
 }
 
-void NewProjectAudioProcessor::setupSynth()
+void PluginProcessor::setupSynth()
 {
     synth.clearVoices();
     synth.clearSounds();
 
-    // Добавляем голоса
     for (int i = 0; i < kMaxVoices; ++i)
-        synth.addVoice(new WavetableVoice(&sineTable, &sineTable));
+        synth.addVoice(new WavetableVoice(&fallbackWaveform, &fallbackWaveform));
 
-    // Добавляем звук (обязательно)
     synth.addSound(new SynthSound());
 }
 
-void NewProjectAudioProcessor::updateFilterParameters(float cutoff, float resonance, int type)
-{
-    // Устанавливаем базовые параметры
-    filter.setCutoffFrequency(cutoff);
-    filter.setResonance(resonance);
+void PluginProcessor::updateFilterParameters(float cutoff, float resonance, int type)
+{ 
+    if (type != 3) {
+        mainFilter.setCutoffFrequency(cutoff);
+        mainFilter.setResonance(resonance);
+        
+        switch (type) {
+            case 0: mainFilter.setType(juce::dsp::StateVariableTPTFilterType::lowpass); break;
+            case 1: mainFilter.setType(juce::dsp::StateVariableTPTFilterType::highpass); break;
+            case 2: mainFilter.setType(juce::dsp::StateVariableTPTFilterType::bandpass); break;
+        }
+    }
+    else // Notch
+    {
+        *notchFilter.state = *juce::dsp::IIR::Coefficients<float>::makeNotch(
+            filterSpec.sampleRate, cutoff, resonance);
+    }
+}
 
-    // Настраиваем тип фильтра через параметры
-    switch (type) {
-    case 0: // Low-pass
-        filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
-        break;
-    case 1: // High-pass
-        filter.setType(juce::dsp::StateVariableTPTFilterType::highpass);
-        break;
+void PluginProcessor::EffectProcessor::prepare(const juce::dsp::ProcessSpec& spec)
+{
+    auto coeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass(spec.sampleRate, 500);
+    toneFilterDry.state = coeffs;
+    toneFilterWet.state = coeffs;
+    toneFilterDry.prepare(spec);
+    toneFilterWet.prepare(spec);
+    toneFilterDry.reset();
+    toneFilterWet.reset();
+    distortion.functionToUse = [this](float x) { return std::tanh(x * distortionDrive * 2.0f); };
+    distortion.reset();
+
+    chorus.prepare(spec);
+    chorus.reset();
+    chorus.setRate(1.5f);
+    chorus.setDepth(0.3f); 
+    chorus.setCentreDelay(10.0f);
+    chorus.setFeedback(0.0f);
+    chorus.setMix(1.0f);
+
+    phaser.prepare(spec);
+    phaser.reset();
+    phaser.setRate(0.5f);  
+    phaser.setDepth(0.8f); 
+    phaser.setCentreFrequency(1000.0f); 
+    phaser.setFeedback(0.0f);
+    phaser.setMix(1.0f);
+    
+    reverb.prepare(spec);
+    reverb.reset();
+    reverbParams.roomSize = 0.5f;
+    reverbParams.damping = 0.5f;
+    reverbParams.wetLevel = reverbMix;
+    reverbParams.dryLevel = 0.0f;
+    reverb.setParameters(reverbParams);
+
+    delay.prepare(spec);
+    delay.reset();
+    delay.setDelay(delayTimeMs);
+}
+
+void PluginProcessor::EffectProcessor::process(juce::AudioBuffer<float>& buffer)
+{
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+
+    switch (type)
+        {
+        case EffectType::None: break;
+
+        case EffectType::Distortion:
+        {
+            juce::AudioBuffer<float> dryBuffer;
+            juce::AudioBuffer<float> wetBuffer;
+            dryBuffer.makeCopyOf(buffer);
+            wetBuffer.makeCopyOf(buffer);
+
+            juce::dsp::AudioBlock<float> wetBlock(wetBuffer);
+            juce::dsp::AudioBlock<float> dryBlock(dryBuffer);
+
+            juce::dsp::ProcessContextReplacing<float> wetCtx(wetBlock);
+            juce::dsp::ProcessContextReplacing<float> dryCtx(dryBlock);
+     
+            distortion.process(wetCtx);
+            toneFilterDry.process(dryCtx);
+            toneFilterWet.process(wetCtx);
+
+            float gainComp = 1.0f / std::sqrt(distortionDrive);
+            wetBuffer.applyGain(gainComp);
+
+            auto numCh = buffer.getNumChannels();
+            auto numSamples = buffer.getNumSamples();
+            auto* wet = wetBuffer.getArrayOfReadPointers();
+            auto* dry = dryBuffer.getArrayOfReadPointers();
+            auto* out = buffer.getArrayOfWritePointers();
+
+            for (int ch = 0; ch < numCh; ++ch)
+            {
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    out[ch][i] = wet[ch][i] * distortionMix + dry[ch][i] * (1.0f - distortionMix);
+                }
+            }
+
+            break;
+        }
+
+        case EffectType::Chorus:
+        {
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            chorus.process(context);
+
+            auto* dry = dryBuffer.getArrayOfReadPointers();
+            auto* wet = buffer.getArrayOfWritePointers();
+            auto numChannels = buffer.getNumChannels();
+            auto numSamples = buffer.getNumSamples();
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    wet[ch][i] = wet[ch][i] * chorusMix + dry[ch][i] * (1.0f - chorusMix);
+                }
+            }
+            break;
+        }
+
+        case EffectType::Phaser:
+        {
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            phaser.process(context);
+            auto* dry = dryBuffer.getArrayOfReadPointers();
+            auto* wet = buffer.getArrayOfWritePointers();
+            auto numChannels = buffer.getNumChannels();
+            auto numSamples = buffer.getNumSamples();
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    wet[ch][i] = wet[ch][i] * phaserMix + dry[ch][i] * (1.0f - phaserMix);
+                }
+            }
+            break;
+        }
+
+        case EffectType::Reverb:
+        {
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+
+            juce::dsp::AudioBlock<float> block(buffer);
+            juce::dsp::ProcessContextReplacing<float> context(block);
+            reverb.process(context);
+
+            auto* dry = dryBuffer.getArrayOfReadPointers();
+            auto* wet = buffer.getArrayOfWritePointers();
+            auto numChannels = buffer.getNumChannels();
+            auto numSamples = buffer.getNumSamples();
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    wet[ch][i] = wet[ch][i] * reverbMix + dry[ch][i] * (1.0f - reverbMix);
+                }
+            }
+            break;
+        }
+
+        case EffectType::Delay:
+        {
+            const int numSamples = buffer.getNumSamples();
+            const int numChannels = buffer.getNumChannels();
+
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                auto* channelData = buffer.getWritePointer(ch);
+                for (int i = 0; i < numSamples; ++i)
+                {
+                    float in = channelData[i];
+                    float delayed = delay.popSample(ch);
+                    float fbSample = in + delayed * delayFeedback;
+                    delay.pushSample(ch, fbSample);
+                    channelData[i] = delayed * delayMix + in * (1.0f - delayMix);
+                }
+            }
+            break;
+        }
     }
 }

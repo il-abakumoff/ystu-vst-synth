@@ -22,9 +22,9 @@ public:
         level2 = vol2;
     }
 
-    void setPitch(float pitch1, float pitch2) {
-        pitchSemitones1 = pitch1;
-        pitchSemitones2 = pitch2;
+    void setPitch(float pitch1, float pitch2, float fine1, float fine2) {
+        pitchSemitones1 = pitch1 + fine1 / 100;
+        pitchSemitones2 = pitch2 + fine2 / 100;
     }
 
     void setSampleRate(double sampleRate) { envelope.setSampleRate(sampleRate); }
@@ -39,11 +39,11 @@ private:
 
     float phase1 = 0.0f, phase2 = 0.0f;
     float phaseDelta1 = 0.0f, phaseDelta2 = 0.0f;
-    float level1 = 0.0f, level2 = 0.0f; // Добавляем раздельные уровни
+    float level1 = 0.0f, level2 = 0.0f;
     bool isNotePlaying = false;
 
-    float pitchSemitones1 = 0.0f; // Pitch для первого осциллятора
-    float pitchSemitones2 = 0.0f; // Pitch для второго осциллятора
+    float pitchSemitones1 = 0.0f;
+    float pitchSemitones2 = 0.0f;
 
     CustomEnvelope envelope;
 

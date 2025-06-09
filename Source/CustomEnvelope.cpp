@@ -7,8 +7,7 @@ void CustomEnvelope::setSampleRate(double rate)
     sampleRate = rate;
 }
 
-void CustomEnvelope::setParameters(float attackSec, float decaySec,
-    float sustainLvl, float releaseSec)
+void CustomEnvelope::setParameters(float attackSec, float decaySec, float sustainLvl, float releaseSec)
 {
     attackTime = attackSec;
     decayTime = decaySec;
@@ -27,7 +26,7 @@ void CustomEnvelope::noteOff()
 {
     if (state != Idle && state != Release)
     {
-        releaseStartValue = currentValue; // Сохраняем текущее значение
+        releaseStartValue = currentValue;
         state = Release;
         samplesProcessed = 0;
     }
@@ -94,7 +93,7 @@ float CustomEnvelope::getNextValue()
 
         float releaseSamples = releaseTime * sampleRate;
         float t = samplesProcessed / releaseSamples;
-        currentValue = releaseStartValue * (1.0f - t); // Затухаем от текущего значения
+        currentValue = releaseStartValue * (1.0f - t);
 
         if (t >= 1.0f)
         {
