@@ -20,15 +20,11 @@ void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
     auto rw = radius * 2.0f;
     auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
 
-    // Fill
     g.setColour(findColour(juce::Slider::rotarySliderFillColourId));
     g.fillEllipse(rx, ry, rw, rw);
-
-    // Outline
     g.setColour(findColour(juce::Slider::rotarySliderOutlineColourId));
     g.drawEllipse(rx, ry, rw, rw, 2.0f);
 
-    // Pointer
     juce::Path p;
     auto pointerLength = radius * 0.33f;
     auto pointerThickness = 2.0f;
@@ -41,14 +37,12 @@ void CustomLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int wi
 void CustomLookAndFeel::applyThemeColours()
 {
     auto bg = findColour(juce::ResizableWindow::backgroundColourId);
-    auto fg = findColour(juce::Label::textColourId); // можно базироваться на цвете схемы
+    auto fg = findColour(juce::Label::textColourId);
 
     setColour(juce::TabbedButtonBar::tabTextColourId, fg);
     setColour(juce::TabbedButtonBar::frontTextColourId, fg.brighter(0.3f));
-
     setColour(juce::TextEditor::textColourId, fg);
     setColour(juce::TextEditor::backgroundColourId, bg.darker(0.3f));
-
     setColour(juce::ComboBox::textColourId, fg);
     setColour(juce::Label::textColourId, fg);
 }
@@ -58,7 +52,7 @@ void CustomLookAndFeel::setTheme(int themeId)
     if (themeId == 1)
         setColourScheme(getMidnightColourScheme());
     else
-        setColourScheme(juce::LookAndFeel_V4::getLightColourScheme());
+        setColourScheme(getLightColourScheme());
 
     applyThemeColours();
 }

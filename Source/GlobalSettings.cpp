@@ -25,10 +25,7 @@ juce::File GlobalSettings::getSettingsFile() const
 bool GlobalSettings::ensureSettingsDirectoryExists() const
 {
     auto dir = getSettingsDirectory();
-    if (!dir.exists())
-    {
-        return dir.createDirectory();
-    }
+    if (!dir.exists()) return dir.createDirectory();
     return true;
 }
 
@@ -48,7 +45,6 @@ void GlobalSettings::loadSettings()
     std::unique_ptr<juce::XmlElement> xml(juce::XmlDocument(file).getDocumentElement());
     if (xml == nullptr || !xml->hasTagName("SETTINGS")) return;
 
-    // Загрузка путей для всех ОС
     if (auto* winPath = xml->getChildByName("winPresetPath"))
         winPresetPath = winPath->getStringAttribute("path");
 
@@ -59,7 +55,7 @@ void GlobalSettings::loadSettings()
         linuxPresetPath = linuxPath->getStringAttribute("path");
 
     if (auto* theme = xml->getChildByName("Theme"))
-        themeId = theme->getIntAttribute("id", 1); // 1 — Midnight по умолчанию
+        themeId = theme->getIntAttribute("id", 1);
 }
 
 void GlobalSettings::saveSettings()
@@ -73,16 +69,12 @@ void GlobalSettings::saveSettings()
 
     std::unique_ptr<juce::XmlElement> xml(new juce::XmlElement("SETTINGS"));
 
-    // Сохраняем пути для всех ОС
     auto* winElement = xml->createNewChildElement("winPresetPath");
     winElement->setAttribute("path", winPresetPath);
-
     auto* macElement = xml->createNewChildElement("MacOsPresetPath");
     macElement->setAttribute("path", macPresetPath);
-
     auto* linuxElement = xml->createNewChildElement("LinuxPresetPath");
     linuxElement->setAttribute("path", linuxPresetPath);
-
     auto* themeElement = xml->createNewChildElement("Theme");
     themeElement->setAttribute("id", themeId);
 
@@ -134,6 +126,6 @@ int GlobalSettings::getThemeId() const
 juce::File GlobalSettings::getWavetableDirectory() const
 {
     auto waveFolder = getSettingsDirectory().getChildFile("WaveTables");
-    waveFolder.createDirectory(); // создает, если не существует
+    waveFolder.createDirectory();
     return waveFolder;
 }

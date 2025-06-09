@@ -55,10 +55,9 @@ public:
     {
         EffectType type = EffectType::None;
 
-        // distortion
-        float distortionDrive = 1.0f;
-        float distortionMix = 1.0f; // 0 = dry, 1 = wet
-        float distortionTone = 20000.0f; // cutoff для LPF
+        float distortionDrive = 1.0f; // distortion
+        float distortionMix = 1.0f;
+        float distortionTone = 20000.0f;
 
         juce::dsp::WaveShaper<float, std::function<float(float)>> distortion;
         juce::dsp::ProcessorDuplicator<

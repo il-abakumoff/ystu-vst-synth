@@ -444,7 +444,6 @@ void PluginEditor::setupMatrixPanel()
     {
         MatrixPanel::ModulationRow row;
 
-        // Источник модуляции
         row.sourceCombo = std::make_unique<juce::ComboBox>();
         matrixPanel->addAndMakeVisible(row.sourceCombo.get());
         row.sourceCombo->addItem("None", 1);
@@ -452,7 +451,6 @@ void PluginEditor::setupMatrixPanel()
         row.sourceCombo->addItem("Env 2", 3);
         row.sourceCombo->setSelectedId(1);
 
-        // Цель модуляции
         row.targetCombo = std::make_unique<juce::ComboBox>();
         matrixPanel->addAndMakeVisible(row.targetCombo.get());
         row.targetCombo->addItem("None", 1);
@@ -461,7 +459,6 @@ void PluginEditor::setupMatrixPanel()
         row.targetCombo->addItem("Osc2 Pitch", 4);
         row.targetCombo->setSelectedId(1);
 
-        // Глубина модуляции
         row.amountSlider = std::make_unique<juce::Slider>();
         matrixPanel->addAndMakeVisible(row.amountSlider.get());
         row.amountSlider->setSliderStyle(juce::Slider::LinearHorizontal);
@@ -469,7 +466,6 @@ void PluginEditor::setupMatrixPanel()
         row.amountSlider->setRange(-1.0, 1.0, 0.01);
         row.amountSlider->setValue(0.0);
 
-        // Подписи
         row.sourceLabel = std::make_unique<juce::Label>();
         matrixPanel->addAndMakeVisible(row.sourceLabel.get());
         row.sourceLabel->setText("Source:", juce::dontSendNotification);
@@ -493,7 +489,6 @@ void PluginEditor::paint(juce::Graphics& g)
 {
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
-    // Рисуем заголовки в зависимости от активной вкладки
     if (tabs.getCurrentTabIndex() == 0)
     {
         g.setColour(juce::Colours::white);
@@ -524,9 +519,9 @@ void PluginEditor::resized()
 void PluginEditor::MainPanel::resized()
 {
     auto area = getLocalBounds();
-    const int margin = 10; // Общий отступ
-    const int sliderHeight = 80; // Высота слайдеров
-    const int labelHeight = 20; // Высота лейблов
+    const int margin = 10; 
+    const int sliderHeight = 80; 
+    const int labelHeight = 20;
 
     auto presetArea = area.removeFromBottom(40);
     auto buttonWidth = 80;
@@ -536,10 +531,8 @@ void PluginEditor::MainPanel::resized()
     loadButton.setBounds(presetArea.removeFromLeft(buttonWidth).reduced(5));
     saveButton.setBounds(presetArea.removeFromLeft(buttonWidth).reduced(5));
 
-    // 1. Осцилляторы (верхняя часть)
     auto oscArea = area.removeFromTop(200);
     {
-        // Осциллятор 1
         auto osc1Area = oscArea.removeFromLeft(getWidth() / 2).reduced(margin);
         osc1WaveSelector.setBounds(osc1Area.removeFromTop(30));
         osc1Area.removeFromTop(margin); // Добавляем отступ между выбором волны и слайдерами
@@ -549,7 +542,6 @@ void PluginEditor::MainPanel::resized()
         osc1PitchSlider.setBounds(osc1SliderArea.removeFromLeft(osc1SliderArea.getWidth() / 2));
         osc1FineSlider.setBounds(osc1SliderArea);
 
-        // Смещаем лейблы вниз от слайдеров
         osc1VolumeLabel.setBounds(osc1VolumeSlider.getX(), osc1VolumeSlider.getBottom() + 5,
             osc1VolumeSlider.getWidth(), labelHeight);
         osc1PitchLabel.setBounds(osc1PitchSlider.getX(), osc1PitchSlider.getBottom() + 5,
@@ -557,7 +549,6 @@ void PluginEditor::MainPanel::resized()
         osc1FineLabel.setBounds(osc1FineSlider.getX(), osc1FineSlider.getBottom() + 5,
             osc1FineSlider.getWidth(), labelHeight);
 
-        // Осциллятор 2
         auto osc2Area = oscArea.reduced(margin);
         osc2WaveSelector.setBounds(osc2Area.removeFromTop(30));
         osc2Area.removeFromTop(margin); // Добавляем отступ
@@ -575,10 +566,8 @@ void PluginEditor::MainPanel::resized()
             osc2FineSlider.getWidth(), labelHeight);
     }
 
-    // 2. Фильтр и ADSR (нижняя часть)
     auto bottomArea = area.reduced(margin);
     {
-        // Левая часть - фильтр
         auto filterArea = bottomArea.removeFromLeft(bottomArea.getWidth() / 2);
         filterTypeSelector.setBounds(filterArea.removeFromTop(30));
 
@@ -594,11 +583,9 @@ void PluginEditor::MainPanel::resized()
         filterResonanceLabel.setBounds(filterResonanceSlider.getX(), filterResonanceSlider.getBottom() + 5,
             filterResonanceSlider.getWidth(), labelHeight);
 
-        // Правая часть - ADSR
         auto adsrArea = bottomArea;
         auto adsrHeight = adsrArea.getHeight() / 2;
 
-        // Основной ADSR
         auto mainAdsr = adsrArea.removeFromTop(adsrHeight);
         auto mainAdsrSliderHeight = mainAdsr.getHeight() - labelHeight - margin;
 
@@ -618,7 +605,6 @@ void PluginEditor::MainPanel::resized()
         releaseLabel1.setBounds(releaseSlider1.getX(), releaseSlider1.getBottom() + 5,
             releaseSlider1.getWidth(), labelHeight);
 
-        // ADSR модуляции
         auto modAdsr = adsrArea;
         auto modAdsrSliderHeight = modAdsr.getHeight() - labelHeight - margin;
 
@@ -654,21 +640,18 @@ void PluginEditor::MatrixPanel::resized()
     for (auto& row : modulationRows) {
         auto rowArea = area.removeFromTop(rowHeight);
 
-        // Источник
         row.sourceLabel->setBounds(rowArea.removeFromLeft(labelWidth));
         row.sourceCombo->setBounds(rowArea.removeFromLeft(comboWidth));
         rowArea.removeFromLeft(margin);
 
-        // Цель
         row.targetLabel->setBounds(rowArea.removeFromLeft(labelWidth));
         row.targetCombo->setBounds(rowArea.removeFromLeft(comboWidth));
         rowArea.removeFromLeft(margin);
 
-        // Глубина
         row.amountLabel->setBounds(rowArea.removeFromLeft(labelWidth));
         row.amountSlider->setBounds(rowArea);
 
-        area.removeFromTop(5); // Отступ между строками
+        area.removeFromTop(5);
     }
 }
 
@@ -680,8 +663,8 @@ PluginEditor::~PluginEditor()
 PluginEditor::FilterResponseDisplay::FilterResponseDisplay(PluginProcessor& p)
     : processor(p)
 {
-    startTimerHz(30); // Обновление 30 раз в секунду
-    magnitudes.resize(300); // Разрешение графика
+    startTimerHz(30); 
+    magnitudes.resize(300);
     setOpaque(false);
 }
 
@@ -692,16 +675,13 @@ PluginEditor::FilterResponseDisplay::~FilterResponseDisplay()
 
 void PluginEditor::FilterResponseDisplay::paint(juce::Graphics& g)
 {
-    // Фон с градиентом для лучшего восприятия
     g.setGradientFill(juce::ColourGradient(
         juce::Colours::darkgrey.withAlpha(0.3f), 0.0f, 0.0f,
         juce::Colours::black.withAlpha(0.6f), 0.0f, static_cast<float>(getHeight()), false));
     g.fillAll();
 
-    // Сетка
     g.setColour(juce::Colours::white.withAlpha(0.15f));
 
-    // Вертикальные линии (логарифмические)
     float freqs[] = { 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
     float logMin = std::log10(20.0f);
     float logMax = std::log10(20000.0f);
@@ -710,13 +690,10 @@ void PluginEditor::FilterResponseDisplay::paint(juce::Graphics& g)
     for (float freq : freqs) {
         float x = getWidth() * (std::log10(freq) - logMin) / logRange;
         g.drawVerticalLine(static_cast<int>(x), 0, getHeight());
-
-        // Подписи частот
         juce::String freqText = freq >= 1000 ? juce::String(freq / 1000.0, 1) + "k" : juce::String(freq);
         g.drawText(freqText, x - 20, getHeight() - 20, 40, 20, juce::Justification::centred);
     }
 
-    // Горизонтальные линии (dB)
     for (int dB = -60; dB <= 24; dB += 6) {
         float y = juce::jmap(static_cast<float>(dB), -60.0f, 24.0f,
             static_cast<float>(getHeight()), 0.0f);
@@ -724,13 +701,11 @@ void PluginEditor::FilterResponseDisplay::paint(juce::Graphics& g)
         g.drawText(juce::String(dB), 5, y - 10, 30, 20, juce::Justification::left);
     }
 
-    // График АЧХ с обводкой для лучшей видимости
     g.setColour(juce::Colours::cyan.withAlpha(0.8f));
     g.strokePath(responsePath, juce::PathStrokeType(3.0f));
     g.setColour(juce::Colours::cyan);
     g.strokePath(responsePath, juce::PathStrokeType(1.5f));
 
-    // Линия частоты среза
     auto cutoff = processor.getAPVTS().getRawParameterValue("filterCutoff")->load();
     float cutoffX = getWidth() * (std::log10(cutoff) - logMin) / logRange;
     g.setColour(juce::Colours::red.withAlpha(0.7f));
@@ -767,7 +742,6 @@ void PluginEditor::FilterResponseDisplay::updateResponse()
     const float logMax = std::log10(maxFreq);
     const float logRange = logMax - logMin;
 
-    // Общие параметры для всех фильтров
     const float peakGain = resonance * 18.0f;
     const float peakWidthCoef = 0.7f / (resonance + 0.3f);
 
@@ -818,53 +792,38 @@ void PluginEditor::FilterResponseDisplay::updateResponse()
         case 2: // Band-pass
         {
             const float centerFreq = cutoff;
-            // Более плавная зависимость ширины полосы от резонанса
             const float bandwidth = centerFreq * (.5f + 1.5f * (1.0f - resonance));
             const float normalizedFreq = freq / centerFreq;
             const float logNormFreq = std::log2(normalizedFreq);
 
-            // Основной спад - более плавный
             dB = -24.0f * std::abs(logNormFreq);
 
-            // Резонансный пик - более выраженный и симметричный
             if (resonance > 0.1f)
             {
-                const float peakGain = 18.0f * resonance; // Усиление пика
-                const float peakWidth = 0.5f / (resonance + 0.2f); // Ширина пика
+                const float peakGain = 18.0f * resonance;
+                const float peakWidth = 0.5f / (resonance + 0.2f);
 
-                // Гауссов колокол в логарифмической шкале
                 dB += peakGain * std::exp(-(logNormFreq * logNormFreq) /
                     (2.0f * peakWidth * peakWidth));
             }
 
-            // Коррекция для симметричности
             if (freq < centerFreq) {
-                dB *= 0.9f + 0.1f * resonance; // Компенсация асимметрии
+                dB *= 0.9f + 0.1f * resonance;
             }
             break;
         }
 
-        case 3: // Notch filter (с регулируемой глубиной)
+        case 3: // Notch
         {
             const float centerFreq = cutoff;
-            const float normalizedResonance = (resonance - 0.1f) / 1.9f; // Приводим 0.1-2.0 -  0.0-1.0
+            const float normalizedResonance = (resonance - 0.1f) / 1.9f;
 
-            // Преобразуем резонанс в Q-фактор с нелинейной зависимостью
             const float qFactor = 0.2f + 1.0f * normalizedResonance * normalizedResonance;
-
-            // Глубина провала (0 при resonance=2.0, -60 при resonance=0.1)
             const float depth = -60.0f * (1.0f - normalizedResonance);
-
-            // Логарифмическое отклонение от центральной частоты
             const float logOffset = std::log2(freq / centerFreq);
-
-            // Форма провала
             const float bellShape = std::exp(-(logOffset * logOffset) * qFactor * 3.0f);
 
-            // Итоговое значение
             dB = depth * bellShape;
-
-            // Ограничения и защита
             dB = juce::jlimit(-60.0f, 6.0f, dB);
             break;
         }

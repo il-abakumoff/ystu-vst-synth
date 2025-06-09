@@ -25,7 +25,7 @@ SettingsTab::SettingsTab(PluginProcessor& p)
         if (onThemeChanged)
             onThemeChanged(themeSelector.getSelectedId());
         };
-    themeSelector.setSelectedId(1); // По умолчанию Midnight
+    themeSelector.setSelectedId(1);
     addAndMakeVisible(themeSelector);
 
 

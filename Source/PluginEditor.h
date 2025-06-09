@@ -22,13 +22,11 @@ private:
 
     struct MainPanel : public juce::Component
     {
-        // пресеты
         juce::Label presetLabel;
         juce::TextButton loadButton{ "Load" };
         juce::TextButton saveButton{ "Save" };
         std::unique_ptr<juce::FileChooser> fileChooser;
 
-        // Осциллятор 1
         juce::ComboBox osc1WaveSelector;
         juce::Slider osc1VolumeSlider;
         juce::Slider osc1PitchSlider;
@@ -42,7 +40,6 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc1PitchAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc1FineAttachment;
 
-        // Осциллятор 2
         juce::ComboBox osc2WaveSelector;
         juce::Slider osc2VolumeSlider;
         juce::Slider osc2PitchSlider;
@@ -56,7 +53,6 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc2PitchAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> osc2FineAttachment;
 
-        // ADSR 1
         juce::Slider attackSlider1;
         juce::Slider decaySlider1;
         juce::Slider sustainSlider1;
@@ -71,7 +67,6 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sustainAttachment1;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> releaseAttachment1;
 
-        // ADSR 2
         juce::Slider attackSlider2;
         juce::Slider decaySlider2;
         juce::Slider sustainSlider2;
@@ -86,7 +81,6 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sustainAttachment2;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> releaseAttachment2;
 
-        // Фильтр
         juce::ComboBox filterTypeSelector;
         juce::Slider filterCutoffSlider;
         juce::Slider filterResonanceSlider;
@@ -100,6 +94,7 @@ private:
 
         void resized() override;
     };
+
     struct MatrixPanel : public juce::Component
     {
         struct ModulationRow
@@ -115,6 +110,7 @@ private:
 
         void resized() override;
     };
+
     struct FilterResponseDisplay : public juce::Component,
         public juce::Timer
     {

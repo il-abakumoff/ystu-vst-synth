@@ -231,33 +231,7 @@ void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     updateFilterParameters(1000.0f, 0.7f, 0);
 }
 
-void PluginProcessor::releaseResources()
-{
-
-}
-
-#ifndef JucePlugin_PreferredChannelConfigurations
-bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
-{
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-  #else
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
-
-   #if ! JucePlugin_IsSynth
-    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
-        return false;
-   #endif
-
-    return true;
-  #endif
-}
-#endif
-
-void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+void PluginProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     buffer.clear();
 
@@ -296,13 +270,11 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
 
             if (osc1WaveIndex >= 0 && osc1WaveIndex < maxWaveIndex) {
                 table1 = &wavetableList[osc1WaveIndex].second;
-                DBG(osc1WaveIndex);
             }
             else
             {
                 table1 = &fallbackWaveform;
             }
-               
 
             if (osc2WaveIndex >= 0 && osc2WaveIndex < maxWaveIndex)
                 table2 = &wavetableList[osc2WaveIndex].second;
@@ -316,13 +288,13 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
 
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+
     float cutoff = apvts.getRawParameterValue("filterCutoff")->load();
     float resonance = apvts.getRawParameterValue("filterResonance")->load();
     currentFilterType = apvts.getRawParameterValue("filterType")->load();
     updateFilterParameters(cutoff, resonance, currentFilterType);
-
-    juce::dsp::AudioBlock<float> block(buffer);
-    juce::dsp::ProcessContextReplacing<float> context(block);
 
     if (currentFilterType != 3)
     {
@@ -337,9 +309,35 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
         fx.process(buffer);
 }
 
+void PluginProcessor::releaseResources()
+{
+
+}
+
+#ifndef JucePlugin_PreferredChannelConfigurations
+bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+  #if JucePlugin_IsMidiEffect
+    juce::ignoreUnused (layouts);
+    return true;
+  #else
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
+     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+
+   #if ! JucePlugin_IsSynth
+    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
+        return false;
+   #endif
+
+    return true;
+  #endif
+}
+#endif
+
 bool PluginProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return true;
 }
 
 juce::AudioProcessorEditor* PluginProcessor::createEditor()
@@ -347,10 +345,9 @@ juce::AudioProcessorEditor* PluginProcessor::createEditor()
     return new PluginEditor (*this);
 }
 
-
 void PluginProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    auto state = apvts.copyState(); // Автоматически сохраняет все параметры APVTS
+    auto state = apvts.copyState();
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
@@ -406,7 +403,7 @@ void PluginProcessor::setupSynth()
 
 void PluginProcessor::updateFilterParameters(float cutoff, float resonance, int type)
 { 
-    if (type != 3) { // LP/HP/BP
+    if (type != 3) {
         mainFilter.setCutoffFrequency(cutoff);
         mainFilter.setResonance(resonance);
         
@@ -490,7 +487,7 @@ void PluginProcessor::EffectProcessor::process(juce::AudioBuffer<float>& buffer)
             toneFilterDry.process(dryCtx);
             toneFilterWet.process(wetCtx);
 
-            float gainComp = 1.0f / std::sqrt(distortionDrive); // можно подстроить формулу
+            float gainComp = 1.0f / std::sqrt(distortionDrive);
             wetBuffer.applyGain(gainComp);
 
             auto numCh = buffer.getNumChannels();
@@ -593,7 +590,7 @@ void PluginProcessor::EffectProcessor::process(juce::AudioBuffer<float>& buffer)
                 for (int i = 0; i < numSamples; ++i)
                 {
                     float in = channelData[i];
-                    float delayed = delay.popSample(ch); // читаем задержанный
+                    float delayed = delay.popSample(ch);
                     float fbSample = in + delayed * delayFeedback;
                     delay.pushSample(ch, fbSample);
                     channelData[i] = delayed * delayMix + in * (1.0f - delayMix);

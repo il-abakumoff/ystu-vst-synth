@@ -9,7 +9,7 @@ public:
     ~SettingsTab() override;
     void resized() override;
 
-    std::function<void(int)> onThemeChanged; // Callback
+    std::function<void(int)> onThemeChanged;
 
 private:
     PluginProcessor& processor;
@@ -20,7 +20,6 @@ private:
 
     juce::Label themeLabel;
     juce::ComboBox themeSelector;
-
 
     void updatePathDisplay();
     void browseForPresetPath();
